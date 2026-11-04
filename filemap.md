@@ -9,7 +9,8 @@
 - `gradle/libs.versions.toml` — version catalog (all dependency + plugin versions)
 - `gradle/wrapper/`, `gradlew`, `gradlew.bat` — Gradle 8.11.1 wrapper
 - `local.properties` — `sdk.dir` (gitignored, per machine)
-- `.github/workflows/release.yml` — CI: test + lint + assembleRelease; on main also signs, builds `site/` (lounge.apk, version.json, index.html) and deploys Pages
+- `.github/workflows/release.yml` — CI: test + lint + assembleRelease (uses runner's preinstalled SDK, no setup-android); on main also signs, cross-checks APK versionCode == APP_VERSION, builds `site/` (lounge.apk, version.json via jq, index.html from template, sha256 self-check) and deploys Pages
+- `.github/pages/index.template.html` — Pages download page template (@VC@, @SHA@, @SIZE_MB@ filled by CI)
 - `app/build.gradle.kts` — app module: SDK levels, versionCode from APP_VERSION regex, release signing (keystore.properties or LOUNGE_* env)
 - `app/proguard-rules.pro` — empty (minify off)
 - `app/src/main/AndroidManifest.xml` — full manifest (HOME/LEANBACK activity, accessibility service, install receiver, permissions, queries); declared up front in T1
@@ -30,7 +31,9 @@
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeDecider.kt` — pure Home-key / stock-launcher-window decision logic (KeyDecision, STOCK_LAUNCHERS)
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeServiceStatus.kt` — isEnabled(context) + openAccessibilitySettings(context)
 - `app/src/test/java/ca/cheungeric/lounge/home/HomeDeciderTest.kt` — decider + enabled-list parser tests
-- `app/src/main/java/ca/cheungeric/lounge/update/` — UpdateChecker (+ VersionInfo), UpdateInstaller, InstallStatusReceiver
+- `app/src/main/java/ca/cheungeric/lounge/update/` — UpdateChecker (+ VersionInfo, parseVersionInfo, isNewer), UpdateState, UpdateManager (StateFlow, checkNow/install/daily auto-check, process-wide UpdateStatus), UpdateInstaller (+ sha256Hex/sha256Matches; download, verify, PackageInstaller session), InstallStatusReceiver
 - `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes tokens + LoungeTheme
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt` — APP_VERSION (version source), PatchNote, PATCH_NOTES
-- `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests
+- `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/WhatsNew.kt` — WhatsNewGate (pure), WhatsNewStore (lounge_prefs / lounge_lastSeenVer, captureFreshInstall), checkWhatsNew
+- `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotesUi.kt` — PatchNoteEntry (shared renderer), PatchNotesList (Settings), WhatsNewDialog
+- `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests (`update/UpdateLogicTest`, `ui/patchnotes/WhatsNewGateTest`)
