@@ -10,7 +10,7 @@ Verify: `gradlew assembleDebug assembleRelease testDebugUnitTest lintDebug` pass
 Implement `AppsRepository` (PackageManager query of LEANBACK_LAUNCHER ∪ LAUNCHER activities, dedupe by package, exclude self, banner/icon loading, refresh on PACKAGE_ADDED/REMOVED/CHANGED via a receiver registered in code), `LayoutPrefs` (DataStore), pure `HomeLayout` (default favorites per SPEC on first run, favorites order, hide, move left/right, all-apps alphabetical with stable custom order), `WeatherRepository` (Open-Meteo URL from SPEC, WMO-code mapping, 30-min refresh, cache in DataStore, fail-safe). Unit tests for HomeLayout (first-run defaults, uninstalled favorite dropped, move at edges, hide/unhide, ordering stability) and weather JSON parsing + WMO mapping. Touch only `data/` and its tests (+ AppContainer wiring in `LoungeApp`).
 Verify: unit tests pass; `assembleDebug` passes.
 
-## T3 — Home UI (Careful) · deps: T1 · parallel with T2, T5, T6
+## [x] T3 — Home UI (Careful) · deps: T1 · parallel with T2, T5, T6
 Build `ui/theme` and `ui/home` per SPEC "Home screen" + theme tokens, against the T1 model stubs using fake data in `@Preview`s: ClockHeader (ticking each minute, 12-hour), WeatherCard (state: loading/hidden, value), AppRow + AppTile (banner or icon fallback, spring focus scale + outline, click + long-press callbacks), ContinueWatchingPlaceholder (behind a flag, off), footer hint, overscan padding, D-pad focus order (initial focus on first favorite; Up from favorites reaches settings button). Touch only `ui/theme`, `ui/home`.
 Verify: `assembleDebug` + `lintDebug` pass; previews compile; screenshot of a preview render if a Compose preview screenshot is feasible, otherwise describe.
 
