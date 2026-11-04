@@ -2,6 +2,8 @@ package ca.cheungeric.lounge.ui.home
 
 import ca.cheungeric.lounge.data.HomeState
 import ca.cheungeric.lounge.data.Weather
+import ca.cheungeric.lounge.data.WeatherCodes
+import ca.cheungeric.lounge.data.WeatherIconKey
 import kotlin.math.roundToInt
 
 /**
@@ -42,23 +44,22 @@ internal fun weatherDisplayOf(weather: Weather, location: String = "Toronto"): W
     )
 }
 
-/**
- * Private WMO weather_code -> glyph + short label mapping for the Home pill.
- * T2 adds a shared mapping in data/; T4 may consolidate onto that one.
- */
-internal fun wmoCondition(code: Int, isDay: Boolean): Pair<WeatherGlyph, String> = when (code) {
-    0 -> (if (isDay) WeatherGlyph.Sun else WeatherGlyph.Moon) to "Clear"
-    1 -> (if (isDay) WeatherGlyph.Sun else WeatherGlyph.Moon) to "Mostly clear"
-    2 -> (if (isDay) WeatherGlyph.PartlyCloudyDay else WeatherGlyph.PartlyCloudyNight) to "Partly cloudy"
-    3 -> WeatherGlyph.Cloud to "Cloudy"
-    45, 48 -> WeatherGlyph.Fog to "Fog"
-    51, 53, 55 -> WeatherGlyph.Drizzle to "Drizzle"
-    56, 57 -> WeatherGlyph.Drizzle to "Freezing drizzle"
-    61, 63, 65 -> WeatherGlyph.Rain to "Rain"
-    66, 67 -> WeatherGlyph.Rain to "Freezing rain"
-    71, 73, 75, 77 -> WeatherGlyph.Snow to "Snow"
-    80, 81, 82 -> WeatherGlyph.Rain to "Showers"
-    85, 86 -> WeatherGlyph.Snow to "Snow showers"
-    95, 96, 99 -> WeatherGlyph.Thunder to "Thunderstorm"
-    else -> WeatherGlyph.Cloud to "Cloudy"
+/** WMO weather_code -> glyph + short label, derived from the shared [WeatherCodes] mapping. */
+internal fun wmoCondition(code: Int, isDay: Boolean): Pair<WeatherGlyph, String> {
+    val d = WeatherCodes.describe(code, isDay)
+    return glyphOf(d.iconKey) to d.label
+}
+
+internal fun glyphOf(key: WeatherIconKey): WeatherGlyph = when (key) {
+    WeatherIconKey.CLEAR_DAY -> WeatherGlyph.Sun
+    WeatherIconKey.CLEAR_NIGHT -> WeatherGlyph.Moon
+    WeatherIconKey.PARTLY_CLOUDY_DAY -> WeatherGlyph.PartlyCloudyDay
+    WeatherIconKey.PARTLY_CLOUDY_NIGHT -> WeatherGlyph.PartlyCloudyNight
+    WeatherIconKey.CLOUDY -> WeatherGlyph.Cloud
+    WeatherIconKey.FOG -> WeatherGlyph.Fog
+    WeatherIconKey.DRIZZLE -> WeatherGlyph.Drizzle
+    WeatherIconKey.RAIN, WeatherIconKey.SHOWERS -> WeatherGlyph.Rain
+    WeatherIconKey.SNOW, WeatherIconKey.SNOW_SHOWERS -> WeatherGlyph.Snow
+    WeatherIconKey.THUNDERSTORM -> WeatherGlyph.Thunder
+    WeatherIconKey.UNKNOWN -> WeatherGlyph.Cloud
 }

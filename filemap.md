@@ -17,9 +17,9 @@
 - `app/src/main/res/xml/home_button_service.xml` — accessibility service config
 - `app/src/main/res/drawable/banner.xml`, `ic_launcher.xml` — placeholder "L" TV banner (320x180) + icon
 - `app/src/main/res/values/` — strings, colors, window theme
-- `app/src/main/java/ca/cheungeric/lounge/MainActivity.kt` — launcher activity hosting Compose
+- `app/src/main/java/ca/cheungeric/lounge/MainActivity.kt` — launcher activity: in-memory Home|Settings nav + Back, tile sheet, What's New gate, app launching + 3 s snack, update banner / home-button tip (lounge_prefs `lounge_homeTipDismissed`), weather refresh while STARTED, onNewIntent → Home
 - `app/src/main/java/ca/cheungeric/lounge/LoungeApp.kt` — Application; builds AppContainer
-- `app/src/main/java/ca/cheungeric/lounge/AppContainer.kt` — manual DI container
+- `app/src/main/java/ca/cheungeric/lounge/AppContainer.kt` — manual DI container (repos, layoutPrefs, appScope, updateManager)
 - `app/src/main/java/ca/cheungeric/lounge/data/` — data layer:
   - `AppEntry.kt` — app model
   - `AppsRepository.kt` — PackageManager query (leanback ∪ launcher, dedupe, banner/icon), package-change receiver, `start()/stop()/refresh()`, `apps` StateFlow
@@ -35,7 +35,9 @@
 - `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes/LoungeFocus tokens + LoungeTheme (typography 400/500, shapes)
 - `app/src/main/java/ca/cheungeric/lounge/ui/home/` — Home UI (T3):
   - `HomeScreen.kt` — stateless HomeScreen(state, onAppClick, onAppLongPress, onSettingsClick, topContent); initial focus + Up-to-settings
-  - `HomeUiState.kt` — HomeUiState, WeatherDisplay/WeatherGlyph, private WMO mapping (weatherDisplayOf, wmoCondition)
+  - `HomeUiState.kt` — HomeUiState, WeatherDisplay/WeatherGlyph, weatherDisplayOf/wmoCondition (derived from data.WeatherCodes via glyphOf)
+  - `HomeViewModel.kt` — LayoutStore interface, HomeLogic (pure: combine apps+prefs+weather, initDefaults once, edits), HomeViewModel + Factory
+  - `HomeBanners.kt` — UpdateBanner + HomeButtonTip tonal cards (Home topContent)
   - `ClockFormat.kt` / `ClockHeader.kt` — pure 12-hour clock/date formatting + minute-aligned ticking header
   - `WeatherCard.kt` — weather pill + round SettingsButton
   - `AppRow.kt` / `AppTile.kt` — LazyRow with focusRestorer, TileSize, banner/icon tiles with click + long-press
@@ -43,7 +45,10 @@
   - `Glyphs.kt` — Canvas gear + weather icons (no icon library)
   - `ContinueWatchingPlaceholder.kt` — dashed placeholder cards (dev flag)
   - `HomePreviews.kt` — TV_1080p previews with fake data
+- `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeButton.kt` — shared pill button with spring focus
+- `app/src/main/java/ca/cheungeric/lounge/ui/edit/TileActionSheet.kt` — hold-OK dialog (TileAction: move, favorite, hide, app info, cancel)
+- `app/src/main/java/ca/cheungeric/lounge/ui/settings/SettingsScreen.kt` — Settings sections (home button, updates + status text, hidden apps, patch notes, about)
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt` — APP_VERSION (version source), PatchNote, PATCH_NOTES
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/WhatsNew.kt` — WhatsNewGate (pure), WhatsNewStore (lounge_prefs / lounge_lastSeenVer, captureFreshInstall), checkWhatsNew
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotesUi.kt` — PatchNoteEntry (shared renderer), PatchNotesList (Settings), WhatsNewDialog
-- `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests (data/, home/, update/, ui/patchnotes/, ui/home/)
+- `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests (data/, home/, update/, ui/patchnotes/, ui/home/ incl. HomeLogicTest)

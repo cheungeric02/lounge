@@ -49,5 +49,8 @@ class HomeFormatTest {
         assertEquals(WeatherGlyph.Snow, wmoCondition(75, true).first)
         assertEquals(WeatherGlyph.Thunder, wmoCondition(99, true).first)
         assertEquals(WeatherGlyph.Cloud, wmoCondition(1234, true).first)
+        // Labels come from the shared data.WeatherCodes mapping.
+        assertEquals(WeatherGlyph.PartlyCloudyDay to "Mostly clear", wmoCondition(1, true))
+        assertEquals(WeatherGlyph.Rain to "Showers", wmoCondition(80, true))
     }
 }
