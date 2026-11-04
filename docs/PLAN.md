@@ -14,7 +14,7 @@ Verify: unit tests pass; `assembleDebug` passes.
 Build `ui/theme` and `ui/home` per SPEC "Home screen" + theme tokens, against the T1 model stubs using fake data in `@Preview`s: ClockHeader (ticking each minute, 12-hour), WeatherCard (state: loading/hidden, value), AppRow + AppTile (banner or icon fallback, spring focus scale + outline, click + long-press callbacks), ContinueWatchingPlaceholder (behind a flag, off), footer hint, overscan padding, D-pad focus order (initial focus on first favorite; Up from favorites reaches settings button). Touch only `ui/theme`, `ui/home`.
 Verify: `assembleDebug` + `lintDebug` pass; previews compile; screenshot of a preview render if a Compose preview screenshot is feasible, otherwise describe.
 
-## T4 — Wiring + edit sheet + settings (Medium) · deps: T2, T3, T5, T6
+## [x] T4 — Wiring + edit sheet + settings (Medium) · deps: T2, T3, T5, T6
 Connect HomeScreen to repositories via a `HomeViewModel` (StateFlow). Tile action sheet (`ui/edit`) per SPEC. Launch apps on click (handle missing launch intent gracefully). `SettingsScreen`: Hidden apps (unhide), Home button status + open Accessibility settings, Check for updates, Patch Notes (from T6 renderer), About (version, repo URL). Home ↔ Settings navigation with Back. Onboarding tip when home service disabled. Update banner on Home when available.
 Verify: `assembleDebug testDebugUnitTest lintDebug` pass; ViewModel unit test for favorite/hide/move flows with a fake prefs store.
 
