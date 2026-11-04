@@ -27,6 +27,9 @@
   - `WeatherRepository.kt` — Open-Meteo fetch + DataStore "lounge_weather" cache + `startAutoRefresh`; Weather, WeatherParser, WeatherCodes (WMO → WeatherDescription/WeatherIconKey)
 - `app/src/test/java/ca/cheungeric/lounge/data/` — HomeLayoutTest, WeatherTest
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService
+- `app/src/main/java/ca/cheungeric/lounge/home/HomeDecider.kt` — pure Home-key / stock-launcher-window decision logic (KeyDecision, STOCK_LAUNCHERS)
+- `app/src/main/java/ca/cheungeric/lounge/home/HomeServiceStatus.kt` — isEnabled(context) + openAccessibilitySettings(context)
+- `app/src/test/java/ca/cheungeric/lounge/home/HomeDeciderTest.kt` — decider + enabled-list parser tests
 - `app/src/main/java/ca/cheungeric/lounge/update/` — UpdateChecker (+ VersionInfo), UpdateInstaller, InstallStatusReceiver
 - `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes tokens + LoungeTheme
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt` — APP_VERSION (version source), PatchNote, PATCH_NOTES
