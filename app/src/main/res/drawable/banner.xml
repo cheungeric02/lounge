@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder TV banner (320x180): "L" on the Lounge dark surface. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path
+        android:fillColor="#FF14121A"
+        android:pathData="M0,0h320v180h-320z" />
+    <path
+        android:fillColor="#FF6B4FA8"
+        android:pathData="M20,20h280v140h-280z" />
+    <path
+        android:fillColor="#FFD9C2FF"
+        android:pathData="M130,45h22v68h38v22h-60z" />
+</vector>

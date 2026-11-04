@@ -1,0 +1,109 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Decode release keystore
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          LOUNGE_KEYSTORE_B64: ${{ secrets.LOUNGE_KEYSTORE_B64 }}
+        run: |
+          echo "$LOUNGE_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/lounge-release.jks"
+          echo "LOUNGE_KEYSTORE_PATH=$RUNNER_TEMP/lounge-release.jks" >> "$GITHUB_ENV"
+
+      - name: Test, lint, build
+        env:
+          LOUNGE_KEYSTORE_PASSWORD: ${{ github.event_name == 'push' && secrets.LOUNGE_KEYSTORE_PASSWORD || '' }}
+          LOUNGE_KEY_ALIAS: ${{ github.event_name == 'push' && secrets.LOUNGE_KEY_ALIAS || '' }}
+          LOUNGE_KEY_PASSWORD: ${{ github.event_name == 'push' && secrets.LOUNGE_KEY_PASSWORD || '' }}
+        run: ./gradlew testDebugUnitTest lintDebug assembleRelease
+
+      - name: Assemble Pages site
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          APK=$(ls app/build/outputs/apk/release/*.apk | grep -v unsigned | head -n1 || true)
+          if [ -z "$APK" ]; then echo "No signed release APK found" >&2; ls -la app/build/outputs/apk/release/ >&2; exit 1; fi
+          VC=$(sed -nE 's/^[[:space:]]*const[[:space:]]+val[[:space:]]+APP_VERSION[[:space:]]*=[[:space:]]*([0-9]+).*/\1/p' \
+            app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt | head -n1)
+          if [ -z "$VC" ]; then echo "APP_VERSION not found" >&2; exit 1; fi
+          mkdir -p site
+          cp "$APK" site/lounge.apk
+          SHA=$(sha256sum site/lounge.apk | cut -d' ' -f1)
+          cat > site/version.json <<EOF
+          {
+            "versionCode": $VC,
+            "versionName": "v$VC",
+            "apkUrl": "https://cheungeric02.github.io/lounge/lounge.apk",
+            "sha256": "$SHA"
+          }
+          EOF
+          cat > site/index.html <<EOF
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Lounge</title>
+            <style>
+              body { background: #14121A; color: #E8E3EF; font-family: sans-serif; margin: 0; padding: 48px 16px; text-align: center; }
+              a.btn { display: inline-block; margin-top: 24px; padding: 16px 32px; border-radius: 999px; background: #D9C2FF; color: #14121A; font-size: 24px; text-decoration: none; }
+              p { color: #B9AFCB; }
+            </style>
+          </head>
+          <body>
+            <h1>Lounge v$VC</h1>
+            <p>A clean custom home screen for Android TV.</p>
+            <a class="btn" href="lounge.apk">Download lounge.apk</a>
+            <p>SHA-256: <code>$SHA</code></p>
+          </body>
+          </html>
+          EOF
+          cat site/version.json
+
+      - name: Upload Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

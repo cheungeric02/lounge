@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Lounge</string>
+    <string name="home_button_service_label">Lounge home button</string>
+    <string name="home_button_service_description">Lounge home button: returns to Lounge when you press Home</string>
+</resources>

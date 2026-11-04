@@ -4,3 +4,24 @@
 - `docs/SPEC.md` — product + technical spec (source of truth)
 - `docs/PLAN.md` — tasks T1–T6 with status
 - `.gitignore` — excludes builds, local.properties, keystores
+- `settings.gradle.kts` / `build.gradle.kts` — root Gradle config (repos, plugin aliases)
+- `gradle.properties` — Gradle/AndroidX flags
+- `gradle/libs.versions.toml` — version catalog (all dependency + plugin versions)
+- `gradle/wrapper/`, `gradlew`, `gradlew.bat` — Gradle 8.11.1 wrapper
+- `local.properties` — `sdk.dir` (gitignored, per machine)
+- `.github/workflows/release.yml` — CI: test + lint + assembleRelease; on main also signs, builds `site/` (lounge.apk, version.json, index.html) and deploys Pages
+- `app/build.gradle.kts` — app module: SDK levels, versionCode from APP_VERSION regex, release signing (keystore.properties or LOUNGE_* env)
+- `app/proguard-rules.pro` — empty (minify off)
+- `app/src/main/AndroidManifest.xml` — full manifest (HOME/LEANBACK activity, accessibility service, install receiver, permissions, queries); declared up front in T1
+- `app/src/main/res/xml/home_button_service.xml` — accessibility service config
+- `app/src/main/res/drawable/banner.xml`, `ic_launcher.xml` — placeholder "L" TV banner (320x180) + icon
+- `app/src/main/res/values/` — strings, colors, window theme
+- `app/src/main/java/ca/cheungeric/lounge/MainActivity.kt` — launcher activity hosting Compose
+- `app/src/main/java/ca/cheungeric/lounge/LoungeApp.kt` — Application; builds AppContainer
+- `app/src/main/java/ca/cheungeric/lounge/AppContainer.kt` — manual DI container
+- `app/src/main/java/ca/cheungeric/lounge/data/` — AppEntry, AppsRepository, LayoutPrefs (+ LayoutPrefsState), HomeLayout (+ HomeState), WeatherRepository (+ Weather)
+- `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService
+- `app/src/main/java/ca/cheungeric/lounge/update/` — UpdateChecker (+ VersionInfo), UpdateInstaller, InstallStatusReceiver
+- `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes tokens + LoungeTheme
+- `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt` — APP_VERSION (version source), PatchNote, PATCH_NOTES
+- `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests
