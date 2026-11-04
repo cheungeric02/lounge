@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Lounge</title>
+  <style>
+    :root {
+      --bg: #14121A; --surface: #1E1A24; --surface-variant: #2A2433;
+      --primary: #D9C2FF; --primary-container: #6B4FA8;
+      --on-surface: #E8E3EF; --on-surface-variant: #B9AFCB;
+      --outline: #4A4256; --tertiary: #8E849E; --focus: #F2EAFF;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--on-surface); }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-size: 18px; line-height: 1.5; padding: 40px 16px 56px;
+    }
+    main { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 44px; font-weight: 500; margin: 0; }
+    .ver { color: var(--on-surface-variant); font-size: 20px; margin: 4px 0 0; }
+    .lede { color: var(--on-surface-variant); margin: 16px 0 0; }
+    .btn {
+      display: block; width: 100%; max-width: 480px; margin: 32px 0 0; padding: 22px 28px;
+      border-radius: 999px; background: var(--primary); color: var(--bg);
+      font-size: 26px; font-weight: 500; text-align: center; text-decoration: none;
+      outline: none; border: 4px solid transparent;
+    }
+    .btn:focus, .btn:hover { border-color: var(--focus); box-shadow: 0 0 0 4px var(--primary-container); }
+    .size { color: var(--tertiary); font-size: 16px; margin: 10px 0 0; }
+    section {
+      background: var(--surface); border: 1px solid var(--outline); border-radius: 20px;
+      padding: 20px 24px; margin: 32px 0 0;
+    }
+    h2 { font-size: 22px; font-weight: 500; margin: 0 0 8px; }
+    ol { margin: 0; padding-left: 24px; }
+    li { margin: 6px 0; }
+    code { background: var(--surface-variant); border-radius: 6px; padding: 1px 6px; font-size: 0.95em; }
+    .sha { color: var(--tertiary); font-size: 14px; margin: 32px 0 0; overflow-wrap: anywhere; }
+    @media (min-width: 900px) { body { padding: 64px 48px; } h1 { font-size: 56px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Lounge</h1>
+    <p class="ver">Version @VC@</p>
+    <p class="lede">A clean custom home screen for Android TV.</p>
+
+    <a class="btn" href="lounge.apk" download autofocus>Download Lounge v@VC@</a>
+    <p class="size">lounge.apk &middot; @SIZE_MB@ MB</p>
+
+    <section>
+      <h2>Install on your TV</h2>
+      <ol>
+        <li>Install <strong>Downloader</strong> (by AFTVnews) from the Play Store.</li>
+        <li>Open it and enter <code>cheungeric02.github.io/lounge</code></li>
+        <li>Select <strong>Download Lounge</strong>.</li>
+        <li>When asked, allow Downloader to install apps, then tap <strong>Install</strong>.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>After installing</h2>
+      <ol>
+        <li>Open Lounge &rarr; Settings &rarr; Home button.</li>
+        <li>Turn on <strong>Lounge home button</strong> in Accessibility so Home brings you back to Lounge.</li>
+        <li>Lounge updates itself from here; no need to come back.</li>
+      </ol>
+    </section>
+
+    <p class="sha">SHA-256: <code>@SHA@</code></p>
+  </main>
+</body>
+</html>
