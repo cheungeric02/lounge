@@ -22,6 +22,16 @@
 - `app/src/main/java/ca/cheungeric/lounge/data/` — AppEntry, AppsRepository, LayoutPrefs (+ LayoutPrefsState), HomeLayout (+ HomeState), WeatherRepository (+ Weather)
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService
 - `app/src/main/java/ca/cheungeric/lounge/update/` — UpdateChecker (+ VersionInfo), UpdateInstaller, InstallStatusReceiver
-- `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes tokens + LoungeTheme
+- `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes/LoungeFocus tokens + LoungeTheme (typography 400/500, shapes)
+- `app/src/main/java/ca/cheungeric/lounge/ui/home/` — Home UI (T3):
+  - `HomeScreen.kt` — stateless HomeScreen(state, onAppClick, onAppLongPress, onSettingsClick, topContent); initial focus + Up-to-settings
+  - `HomeUiState.kt` — HomeUiState, WeatherDisplay/WeatherGlyph, private WMO mapping (weatherDisplayOf, wmoCondition)
+  - `ClockFormat.kt` / `ClockHeader.kt` — pure 12-hour clock/date formatting + minute-aligned ticking header
+  - `WeatherCard.kt` — weather pill + round SettingsButton
+  - `AppRow.kt` / `AppTile.kt` — LazyRow with focusRestorer, TileSize, banner/icon tiles with click + long-press
+  - `FocusRing.kt` — Modifier.springFocus (1.1x spring scale + 3dp ring at 3dp offset)
+  - `Glyphs.kt` — Canvas gear + weather icons (no icon library)
+  - `ContinueWatchingPlaceholder.kt` — dashed placeholder cards (dev flag)
+  - `HomePreviews.kt` — TV_1080p previews with fake data
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt` — APP_VERSION (version source), PatchNote, PATCH_NOTES
-- `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests
+- `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests (`ui/home/HomeFormatTest.kt`: clock, weather display, WMO)
