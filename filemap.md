@@ -32,8 +32,18 @@
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeServiceStatus.kt` — isEnabled(context) + openAccessibilitySettings(context)
 - `app/src/test/java/ca/cheungeric/lounge/home/HomeDeciderTest.kt` — decider + enabled-list parser tests
 - `app/src/main/java/ca/cheungeric/lounge/update/` — UpdateChecker (+ VersionInfo, parseVersionInfo, isNewer), UpdateState, UpdateManager (StateFlow, checkNow/install/daily auto-check, process-wide UpdateStatus), UpdateInstaller (+ sha256Hex/sha256Matches; download, verify, PackageInstaller session), InstallStatusReceiver
-- `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes tokens + LoungeTheme
+- `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes/LoungeFocus tokens + LoungeTheme (typography 400/500, shapes)
+- `app/src/main/java/ca/cheungeric/lounge/ui/home/` — Home UI (T3):
+  - `HomeScreen.kt` — stateless HomeScreen(state, onAppClick, onAppLongPress, onSettingsClick, topContent); initial focus + Up-to-settings
+  - `HomeUiState.kt` — HomeUiState, WeatherDisplay/WeatherGlyph, private WMO mapping (weatherDisplayOf, wmoCondition)
+  - `ClockFormat.kt` / `ClockHeader.kt` — pure 12-hour clock/date formatting + minute-aligned ticking header
+  - `WeatherCard.kt` — weather pill + round SettingsButton
+  - `AppRow.kt` / `AppTile.kt` — LazyRow with focusRestorer, TileSize, banner/icon tiles with click + long-press
+  - `FocusRing.kt` — Modifier.springFocus (1.1x spring scale + 3dp ring at 3dp offset)
+  - `Glyphs.kt` — Canvas gear + weather icons (no icon library)
+  - `ContinueWatchingPlaceholder.kt` — dashed placeholder cards (dev flag)
+  - `HomePreviews.kt` — TV_1080p previews with fake data
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt` — APP_VERSION (version source), PatchNote, PATCH_NOTES
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/WhatsNew.kt` — WhatsNewGate (pure), WhatsNewStore (lounge_prefs / lounge_lastSeenVer, captureFreshInstall), checkWhatsNew
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotesUi.kt` — PatchNoteEntry (shared renderer), PatchNotesList (Settings), WhatsNewDialog
-- `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests (`update/UpdateLogicTest`, `ui/patchnotes/WhatsNewGateTest`)
+- `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests (data/, home/, update/, ui/patchnotes/, ui/home/)
