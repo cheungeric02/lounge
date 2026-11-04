@@ -9,5 +9,7 @@ class LoungeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        // Lives for the whole process: package-change receiver + initial app query.
+        container.appsRepository.start()
     }
 }

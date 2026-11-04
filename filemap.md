@@ -19,7 +19,13 @@
 - `app/src/main/java/ca/cheungeric/lounge/MainActivity.kt` — launcher activity hosting Compose
 - `app/src/main/java/ca/cheungeric/lounge/LoungeApp.kt` — Application; builds AppContainer
 - `app/src/main/java/ca/cheungeric/lounge/AppContainer.kt` — manual DI container
-- `app/src/main/java/ca/cheungeric/lounge/data/` — AppEntry, AppsRepository, LayoutPrefs (+ LayoutPrefsState), HomeLayout (+ HomeState), WeatherRepository (+ Weather)
+- `app/src/main/java/ca/cheungeric/lounge/data/` — data layer:
+  - `AppEntry.kt` — app model
+  - `AppsRepository.kt` — PackageManager query (leanback ∪ launcher, dedupe, banner/icon), package-change receiver, `start()/stop()/refresh()`, `apps` StateFlow
+  - `LayoutPrefs.kt` — DataStore "lounge_layout" (+ LayoutPrefsState, StringListCodec JSON lists)
+  - `HomeLayout.kt` — pure `build` + transforms (initDefaults, toggleFavorite, hide/unhide, moveLeft/Right), `DEFAULT_FAVORITES`, HomeState
+  - `WeatherRepository.kt` — Open-Meteo fetch + DataStore "lounge_weather" cache + `startAutoRefresh`; Weather, WeatherParser, WeatherCodes (WMO → WeatherDescription/WeatherIconKey)
+- `app/src/test/java/ca/cheungeric/lounge/data/` — HomeLayoutTest, WeatherTest
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService
 - `app/src/main/java/ca/cheungeric/lounge/update/` — UpdateChecker (+ VersionInfo), UpdateInstaller, InstallStatusReceiver
 - `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes tokens + LoungeTheme
