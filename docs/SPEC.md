@@ -127,4 +127,37 @@ Google TV box: install "Downloader" (AFTVnews) from Play Store → enter `cheung
 
 ## Phase 2 (not now)
 
-Phone companion (GitHub Pages + bon-echo Firebase) to reorder/launch; Trakt "Continue watching" (needs a small server for the client secret); Stremio deep links into titles; Hue scenes ("Movie night"); Dailies to-dos, bench progress, Japanese word of the day, Biff's Cup scores; Bravia IP-control buttons.
+Trakt "Continue watching" (needs a small server for the client secret); Stremio deep links into titles; Hue scenes ("Movie night"); Dailies to-dos, bench progress, Japanese word of the day, Biff's Cup scores; Bravia IP-control buttons.
+
+## v2 — Phone remote (Lounge Remote)
+
+A phone web app that mirrors the TV's rows and can launch / favorite / reorder / hide apps on the TV, plus Home and Back. The TV stays the single owner of its layout: the phone only sends **commands**; the TV applies them to its own DataStore and republishes. No merge conflicts possible.
+
+### Hosting
+- Phone app: `remote/` in this repo (single self-contained `index.html` + `manifest.webmanifest` + `sw.js` + icons). CI copies it to `site/remote/` → `https://cheungeric02.github.io/lounge/remote/`. Installable PWA, scope `/lounge/remote/`.
+- Built per Eric's web-app process: viewport meta, Material 3 Expressive (purple primary tuned to the TV palette: dark primary `#D9C2FF`, light primary `#6B4FA8`), light/dark toggle (☾/☀, `data-theme` + localStorage + anti-flash head script), Android/Fold-first (works folded ~360px and unfolded ~700–900px), web patch-notes convention (`APP_VERSION` = sw cache number `lounge-remote-vN`, `PATCH_NOTES`, key `lounge_remote_lastSeenVer`, fresh install silent, missing → latest, older → delta).
+- Firebase JS SDK 10.12.5 (modular, from gstatic) on Eric's shared **bon-echo** RTDB. Web config (public, not secret): apiKey `AIzaSyD9AJbPC9M4gpTyvfIoRcqILq0ZOom1OBs`, authDomain `bon-echo-bd946.firebaseapp.com`, databaseURL `https://bon-echo-bd946-default-rtdb.firebaseio.com`, projectId `bon-echo-bd946`, appId `1:196437731482:web:3ac836962ce7d89e735723`. Rules are wide open: the pairing key is the only gate (same posture as his other apps). Firebase only works on https (Pages), not file://.
+
+### Pairing key
+- Generated on the TV: 4 words from a fixed 256-word lowercase a–z list (`remote/words.txt`, one per line, identical list embedded in Kotlin and JS), joined by `-`, e.g. `maple-otter-river-cloud` (32 bits; obscurity, not auth). Stored in `lounge_prefs` key `lounge_remoteKey`. Settings can regenerate it (TV deletes the old `lounge/<oldKey>` node first).
+- Pairing URL: `https://cheungeric02.github.io/lounge/remote/#k=<key>` (fragment, never a query string). TV Settings shows it as a QR code + the key in large text. Phone stores the key in `localStorage["lounge_remote_key"]`, then `history.replaceState` strips the fragment. Phone can also type the key (or paste a full pairing URL), or Unpair.
+
+### Data contract (`lounge/<key>/…`)
+Package names are not valid RTDB keys → `pkgKey = pkg.replace('.', ',')`.
+- `tv/status` — `{ appVersion: Int, homeService: Boolean, lastSeen: <server timestamp> }`. TV writes it on bridge start and every 60 s (`{".sv":"timestamp"}`). Phone shows **Online** when `serverNow - lastSeen < 150 s` (phone uses `.info/serverTimeOffset`).
+- `tv/apps` — object `pkgKey → { pkg, label, iconHash }`, every launchable app incl. hidden ones, written whole (PUT) when the installed list or labels change.
+- `tv/layout` — `{ favorites: [pkg…], others: [pkg…], hidden: [pkg…] }` exactly as the TV's HomeLayout builds it (favorites order, visible all-apps order, hidden alphabetical by label). Written whole whenever it changes. **Readers must normalize missing arrays to `[]`** (RTDB drops empty arrays).
+- `tv/icons/<pkgKey>` — `"data:image/png;base64,…"`: the TV banner scaled to 192×108, else the icon scaled to 96×96. Upload only when `iconHash` (sha1 hex of the PNG bytes) changed; delete icons of uninstalled apps.
+- `cmd/<pushId>` — written by the phone with `push()`: `{ type, pkg?, to?, at: {".sv":"timestamp"} }`. Types: `launch`, `favorite`, `unfavorite`, `hide`, `unhide`, `moveFavorite` (`pkg`, `to` = target index in favorites, clamped), `home`, `back`.
+- TV command handling: for each command child, DELETE it first, then apply only if valid and fresh (`|tvServerNow - at| <= 30 s`; TV estimates server time from the HTTP `Date` header offset; commands with a missing/non-numeric `at` are dropped). Unknown types and packages that aren't installed are ignored. `home` = bring Lounge forward; `back` = `performGlobalAction(GLOBAL_ACTION_BACK)` (only when HomeButtonService is running).
+
+### TV side
+- `remote/` package: `WordList`, `RemoteKey` (generate/validate), `SseParser` (pure Firebase REST streaming parser: `event:`/`data:` lines → put/patch/keep-alive/cancel/auth_revoked), `FirebaseRest` (HttpURLConnection GET-stream with `Accept: text/event-stream` / PUT / PATCH / DELETE on `<db>/<path>.json`, Date-header clock offset), `RemoteCommand` (parse + validate + freshness, pure), `RemoteBridge` (publish status/apps/layout/icons, consume commands, reconnect with backoff 2 s → 60 s, never throws).
+- Process-wide `RemoteBridge` owned by `AppContainer`, ref-counted: started when HomeButtonService is connected and when MainActivity is started; runs only while Settings → Phone remote is **on** (pref `lounge_remoteEnabled`, default off; key generated on first enable). Background launches work because HomeButtonService is a system-bound accessibility service; without the service, phone launches only work while Lounge is in front (Settings says so).
+- Layout edits go through the same `HomeLayout` transforms + `LayoutPrefs` as the TV sheet; new pure `HomeLayout.moveFavoriteTo(prefs, pkg, index)`.
+- Settings → "Phone remote" section: On/Off, QR code (pure-Kotlin QR encoder, byte mode, ECC M, versions 1–6, unit-tested) + URL + key in large text, "New key", status line (Connected / Connecting / Offline / Off).
+
+### Phone app (Lounge Remote)
+- Unpaired: welcome card, "Pairing key" field (accepts the 4-word key or a full pairing URL), hint "On the TV: Lounge → Settings → Phone remote, then scan the QR code".
+- Paired: top bar (title "Lounge", online/offline chip, theme toggle, ⋮ menu: Patch notes, Unpair). Remote strip: Home + Back pill buttons. **Favorites**: reorderable list (drag handle, pointer events, works with touch), tap row = launch, overflow = Remove from favorites / Hide. **All apps**: search field + icon grid (tap = launch, overflow/long-press = Add to favorites / Hide). **Hidden** (collapsed section): Unhide. Snackbar "Opening Netflix on TV" / "TV is offline" when offline.
+- No optimistic layout: lists update when the TV republishes `tv/layout` (typically < 1 s); a pending command shows a subtle spinner on its row for up to 5 s.
