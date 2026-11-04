@@ -18,11 +18,11 @@ Verify: `assembleDebug` + `lintDebug` pass; previews compile; screenshot of a pr
 Connect HomeScreen to repositories via a `HomeViewModel` (StateFlow). Tile action sheet (`ui/edit`) per SPEC. Launch apps on click (handle missing launch intent gracefully). `SettingsScreen`: Hidden apps (unhide), Home button status + open Accessibility settings, Check for updates, Patch Notes (from T6 renderer), About (version, repo URL). Home ↔ Settings navigation with Back. Onboarding tip when home service disabled. Update banner on Home when available.
 Verify: `assembleDebug testDebugUnitTest lintDebug` pass; ViewModel unit test for favorite/hide/move flows with a fake prefs store.
 
-## T5 — Home-button override (Careful) · deps: T1 · parallel
+## [x] T5 — Home-button override (Careful) · deps: T1 · parallel
 Implement `HomeButtonService` per SPEC "Home button" (key filter + window-change fallback, debounce, never loop when Lounge is already foreground, safe on API 28–34). Expose `isHomeServiceEnabled(context)` helper. Touch only `home/` and `res/xml/` accessibility config.
 Verify: builds; unit-test the pure decision logic (`shouldLaunchLounge(event, lastHomePressAt, now, foregroundPkg)`).
 
-## T6 — Self-update + Pages + Patch Notes (Careful) · deps: T1 · parallel
+## [x] T6 — Self-update + Pages + Patch Notes (Careful) · deps: T1 · parallel
 `update/UpdateChecker` + `UpdateInstaller` per SPEC (version.json, sha256 verify, PackageInstaller session with a status receiver, "Install unknown apps" permission flow on API 26+). Finish the CI workflow: generate `version.json` (versionCode from APP_VERSION, sha256 of the APK), `index.html` download page, deploy-pages. `ui/patchnotes`: PATCH_NOTES v1 entry, shared `PatchNoteEntry`, `WhatsNewDialog`, `checkWhatsNew` gate per SPEC with unit tests for all four branches. Touch only `update/`, `ui/patchnotes/`, `.github/`.
 Verify: unit tests (version compare, gate branches, version.json parse); `assembleRelease` passes; workflow YAML valid (`actionlint` if available, else careful read).
 
