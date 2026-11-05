@@ -67,4 +67,7 @@
   - `RemotePayloads.kt` — pure tv/status, tv/apps, tv/layout JSON builders + sha1/data-URI
   - `RemoteBridge.kt` — process-wide ref-counted bridge (AppContainer.remoteBridge): prefs lounge_remoteEnabled/lounge_remoteKey, setEnabled/regenerateKey, key + status StateFlows, publishes status/apps/layout/icons, consumes cmd/, backoff 2→60 s
 - `app/src/test/java/ca/cheungeric/lounge/remote/` — SseParser, RemoteCommand, RemoteKey (+ path guard, WordList), RemotePayloads tests; `data/MoveFavoriteToTest.kt`
+- `app/src/main/java/ca/cheungeric/lounge/remote/qr/QrEncoder.kt` — pure-Kotlin QR encoder (byte mode UTF-8, level M, v1–6, GF(256) Reed–Solomon, 8-mask penalty) + QrMatrix
+- `app/src/main/java/ca/cheungeric/lounge/remote/qr/QrCode.kt` — Composable QrCode(text): Canvas, black on white rounded card, 4-module quiet zone
+- `app/src/test/java/ca/cheungeric/lounge/remote/qr/` — QrEncoderTest + QrFixtures (segno-generated reference matrices)
 - `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests (data/, home/, update/, ui/patchnotes/, ui/home/ incl. HomeLogicTest)
