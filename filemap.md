@@ -2,7 +2,7 @@
 
 - `CLAUDE.md` — agent rules + commands
 - `docs/SPEC.md` — product + technical spec (source of truth)
-- `docs/PLAN.md` — tasks T1–T10 with status
+- `docs/PLAN.md` — tasks T1–T13 with status
 - `.gitignore` — excludes builds, local.properties, keystores
 - `settings.gradle.kts` / `build.gradle.kts` — root Gradle config (repos, plugin aliases)
 - `gradle.properties` — Gradle/AndroidX flags
@@ -48,6 +48,7 @@
   - `HomeBanners.kt` — UpdateBanner + HomeButtonTip tonal cards (Home topContent)
   - `ClockFormat.kt` / `ClockHeader.kt` — pure 12-hour clock/date formatting + minute-aligned ticking header
   - `WeatherCard.kt` — weather pill + round SettingsButton
+  - `NowPlayingPill.kt` — v3 HomeNowPlaying (pure `of(session, art)`) + non-focusable header pill (art, ▶/❚❚, title, app); MainActivity feeds it from its own MediaWatcher while STARTED
   - `AppRow.kt` / `AppTile.kt` — LazyRow with focusRestorer, TileSize, banner/icon tiles with click + long-press
   - `FocusRing.kt` — Modifier.springFocus (1.1x spring scale + 3dp ring at 3dp offset)
   - `Glyphs.kt` — Canvas gear + weather icons (no icon library)

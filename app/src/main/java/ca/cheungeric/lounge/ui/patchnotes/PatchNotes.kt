@@ -1,7 +1,7 @@
 package ca.cheungeric.lounge.ui.patchnotes
 
 /** Integer build number. Single source of truth: Gradle reads this line for versionCode/versionName. */
-const val APP_VERSION = 2
+const val APP_VERSION = 3
 
 data class PatchNote(
     val v: Int,
@@ -12,6 +12,18 @@ data class PatchNote(
 
 /** Newest first. Add an entry every release and bump [APP_VERSION]. */
 val PATCH_NOTES = listOf(
+    PatchNote(
+        3,
+        "2026-11-04",
+        "Now Playing, volume and typing",
+        listOf(
+            "Now Playing: see what's playing on the Home screen and on your phone, with play/pause, skip and seek from the phone.",
+            "Phone remote: volume up/down/mute and a sleep timer that pauses playback and turns the screen off.",
+            "Share to TV: share a YouTube, Netflix, Spotify, Prime or Disney+ link from your phone and it opens in the right TV app.",
+            "Type from your phone into TV search boxes (apps that draw their own keyboard, like YouTube and Netflix, don't support it).",
+            "Setup: turn on Settings → Phone remote → Now Playing access. If the Home button stops working after this update, turn the Lounge accessibility service off and on again.",
+        ),
+    ),
     PatchNote(
         2,
         "2026-11-04",

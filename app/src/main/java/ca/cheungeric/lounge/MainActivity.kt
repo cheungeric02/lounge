@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
@@ -33,9 +34,12 @@ import ca.cheungeric.lounge.data.AppEntry
 import ca.cheungeric.lounge.home.HomeButtonService
 import ca.cheungeric.lounge.home.HomeServiceStatus
 import ca.cheungeric.lounge.home.MediaAccessStatus
+import ca.cheungeric.lounge.remote.MediaWatcher
+import ca.cheungeric.lounge.remote.NowPlaying
 import ca.cheungeric.lounge.ui.edit.TileAction
 import ca.cheungeric.lounge.ui.edit.TileActionSheet
 import ca.cheungeric.lounge.ui.home.HomeButtonTip
+import ca.cheungeric.lounge.ui.home.HomeNowPlaying
 import ca.cheungeric.lounge.ui.home.HomeScreen
 import ca.cheungeric.lounge.ui.home.HomeViewModel
 import ca.cheungeric.lounge.ui.home.UpdateBanner
@@ -68,6 +72,7 @@ class MainActivity : ComponentActivity() {
     private var snack by mutableStateOf<Snack?>(null)
     private var homeServiceEnabled by mutableStateOf(true)
     private var mediaAccessGranted by mutableStateOf(false)
+    private var nowPlaying by mutableStateOf<HomeNowPlaying?>(null)
     private var homeTipDismissed by mutableStateOf(true)
     /** Mirrors RemoteBridge.isEnabled (Settings → Phone remote). */
     private var remoteEnabled by mutableStateOf(false)
@@ -97,6 +102,24 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // v3: Home Now Playing pill. Own watcher (works with Phone remote off); retries while no access.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                val watcher = MediaWatcher(this@MainActivity) { pkg ->
+                    container.appsRepository.apps.value.firstOrNull { it.packageName == pkg }?.label ?: pkg
+                }
+                while (true) {
+                    watcher.reports().collect { r ->
+                        val chosen = if (r.access) NowPlaying.choose(r.sessions) else null
+                        val art = chosen?.let { r.art[it.pkg] }?.let { runCatching { it.asImageBitmap() }.getOrNull() }
+                        nowPlaying = HomeNowPlaying.of(chosen, art)
+                    }
+                    nowPlaying = null
+                    delay(30_000)
+                }
+            }
+        }
+
         setContent {
             LoungeTheme {
                 LaunchedEffect(Unit) {
@@ -119,6 +142,7 @@ class MainActivity : ComponentActivity() {
                                 onAppLongPress = { sheetApp = it },
                                 onSettingsClick = { screen = Screen.Settings },
                                 topContent = homeTopContent(updateState),
+                                nowPlaying = nowPlaying,
                             )
                         }
                         Screen.Settings -> {

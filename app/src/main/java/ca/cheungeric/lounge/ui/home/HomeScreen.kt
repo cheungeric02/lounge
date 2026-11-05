@@ -44,6 +44,7 @@ fun HomeScreen(
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
     topContent: (@Composable () -> Unit)? = null,
+    nowPlaying: HomeNowPlaying? = null,
 ) {
     val favorites = state.home.favorites
     val others = state.home.others
@@ -86,6 +87,10 @@ fun HomeScreen(
             ) {
                 ClockHeader()
                 Spacer(Modifier.weight(1f))
+                if (nowPlaying != null) {
+                    NowPlayingPill(nowPlaying, Modifier.weight(1f, fill = false))
+                    Spacer(Modifier.width(16.dp))
+                }
                 WeatherCard(state.weather)
                 Spacer(Modifier.width(16.dp))
                 SettingsButton(onClick = onSettingsClick, modifier = Modifier.focusRequester(settingsFocus))

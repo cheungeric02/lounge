@@ -49,14 +49,14 @@ Verify: preview folded (~360px) + unfolded (~880px), light + dark, demo flows (l
 
 # v3 — Now Playing, Share to TV, volume + sleep, typing
 
-## [ ] T11 — TV bridge v3 (Careful) · deps: T9
+## [x] T11 — TV bridge v3 (Careful) · deps: T9
 SPEC "v3 → TV hooks" + "Data contract additions": MediaAccessService (manifest), MediaWatcher (sessions → tv/nowPlaying + tv/art), volume, sleep timer, LinkRouter (pure, tested), typing via HomeButtonService (config xml, focused-editable tracking → tv/input, text/submit), RemoteCommand new types, tv/status fields, Settings "Now Playing access" row (status + open + manual steps), strings. No new deps. Never write outside `lounge/<key>/`; no live network in tests.
 Verify: unit tests for new RemoteCommand types, LinkRouter, nowPlaying payload/position math, sleep re-arm logic; `testDebugUnitTest assembleDebug lintDebug`.
 
-## [ ] T12 — Phone app v3 (Careful) · deps: mockup approval (parallel with T11)
+## [x] T12 — Phone app v3 (Careful) · deps: mockup approval (parallel with T11)
 SPEC "v3 → Phone app v3". Demo backend covers all flows.
 Verify: preview folded/unfolded, light/dark, demo flows (transport, seek, volume, sleep arm/cancel, keyboard auto-open + submit, send link, share-target URL params), no console errors.
 
-## [ ] T13 — TV Home Now Playing + v3 release (Medium) · deps: T11
+## [x] T13 — TV Home Now Playing + v3 release (Medium) · deps: T11
 SPEC "v3 → TV Home v3", APP_VERSION 3 + PATCH_NOTES, filemap.
 Verify: builds/tests/lint.
