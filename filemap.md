@@ -51,4 +51,7 @@
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt` — APP_VERSION (version source), PatchNote, PATCH_NOTES
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/WhatsNew.kt` — WhatsNewGate (pure), WhatsNewStore (lounge_prefs / lounge_lastSeenVer, captureFreshInstall), checkWhatsNew
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotesUi.kt` — PatchNoteEntry (shared renderer), PatchNotesList (Settings), WhatsNewDialog
+- `app/src/main/java/ca/cheungeric/lounge/remote/qr/QrEncoder.kt` — pure-Kotlin QR encoder (byte mode UTF-8, level M, v1–6, GF(256) Reed–Solomon, 8-mask penalty) + QrMatrix
+- `app/src/main/java/ca/cheungeric/lounge/remote/qr/QrCode.kt` — Composable QrCode(text): Canvas, black on white rounded card, 4-module quiet zone
+- `app/src/test/java/ca/cheungeric/lounge/remote/qr/` — QrEncoderTest + QrFixtures (segno-generated reference matrices)
 - `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests (data/, home/, update/, ui/patchnotes/, ui/home/ incl. HomeLogicTest)
