@@ -67,6 +67,8 @@ class MainActivity : ComponentActivity() {
     private var snack by mutableStateOf<Snack?>(null)
     private var homeServiceEnabled by mutableStateOf(true)
     private var homeTipDismissed by mutableStateOf(true)
+    /** Mirrors RemoteBridge.isEnabled (Settings → Phone remote). */
+    private var remoteEnabled by mutableStateOf(false)
     /** versionCode the user chose "Later" for this session (UpdateManager.dismiss() keeps Available). */
     private var updateLaterFor by mutableStateOf<Int?>(null)
 
@@ -80,6 +82,8 @@ class MainActivity : ComponentActivity() {
         val vm = ViewModelProvider(this, HomeViewModel.Factory(container))[HomeViewModel::class.java]
         val updates = container.updateManager
         updates.start()
+        val bridge = container.remoteBridge
+        remoteEnabled = bridge.isEnabled
         homeTipDismissed = readTipDismissed()
         homeServiceEnabled = HomeServiceStatus.isEnabled(this)
 
@@ -99,6 +103,8 @@ class MainActivity : ComponentActivity() {
                 val homeState by vm.uiState.collectAsStateWithLifecycle()
                 val hidden by vm.hiddenApps.collectAsStateWithLifecycle()
                 val updateState by updates.state.collectAsStateWithLifecycle()
+                val remoteKey by bridge.key.collectAsStateWithLifecycle()
+                val remoteStatus by bridge.status.collectAsStateWithLifecycle()
 
                 Box(Modifier.fillMaxSize().background(LoungeColors.Background)) {
                     when (screen) {
@@ -123,6 +129,14 @@ class MainActivity : ComponentActivity() {
                                 onCheckForUpdates = updates::checkNow,
                                 onInstallUpdate = updates::install,
                                 onUnhide = { vm.unhide(it.packageName) },
+                                remoteEnabled = remoteEnabled,
+                                remoteKey = remoteKey,
+                                remoteStatus = remoteStatus,
+                                onRemoteToggle = { on ->
+                                    bridge.setEnabled(on)
+                                    remoteEnabled = bridge.isEnabled
+                                },
+                                onRemoteNewKey = bridge::regenerateKey,
                             )
                         }
                     }

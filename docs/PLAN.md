@@ -31,18 +31,18 @@ Full build + tests, push `main`, watch CI deploy, confirm Pages URLs serve, hand
 
 # v2 — Phone remote
 
-## T7 — TV remote bridge (Careful) · deps: T4
+## [x] T7 — TV remote bridge (Careful) · deps: T4
 Implement SPEC "v2 → TV side" non-UI parts in `app/.../remote/`: WordList (256 words; also write `remote/words.txt` for the web app), RemoteKey, SseParser, FirebaseRest, RemoteCommand, RemoteBridge (+ AppContainer wiring, ref-counted start from HomeButtonService.onServiceConnected/onUnbind and MainActivity onStart/onStop, gated by `lounge_remoteEnabled`), `HomeLayout.moveFavoriteTo`. Icon/banner → PNG data-URI + sha1. No new dependencies. Never write outside `lounge/<key>/`; no live network calls in tests.
 Verify: unit tests for SseParser (put/patch/keep-alive/multi-line, split chunks), RemoteCommand (each type, stale, missing at, unknown type), RemoteKey, moveFavoriteTo; `assembleDebug testDebugUnitTest lintDebug`.
 
-## T8 — QR encoder (Medium) · deps: none (parallel)
+## [x] T8 — QR encoder (Medium) · deps: none (parallel)
 Pure-Kotlin QR encoder in `app/.../remote/qr/` (byte mode, ECC M, versions 1–6, mask chosen by penalty score) returning a module matrix + a Compose `QrCode(text, modifier)` drawing it dark-on-white with a 4-module quiet zone. Unit tests incl. a fixture matrix from a standard reference implementation.
 Verify: `testDebugUnitTest assembleDebug lintDebug`.
 
-## T9 — TV "Phone remote" settings + v2 release (Medium) · deps: T7, T8
+## [x] T9 — TV "Phone remote" settings + v2 release (Medium) · deps: T7, T8
 Settings section per SPEC, strings, APP_VERSION → 2 + PATCH_NOTES v2 ("Phone remote"), filemap.
 Verify: builds/tests/lint.
 
-## T10 — Lounge Remote web app (Careful) · deps: mockup approval (parallel with T7–T9)
+## [x] T10 — Lounge Remote web app (Careful) · deps: mockup approval (parallel with T7–T9)
 `remote/index.html`, `manifest.webmanifest`, `sw.js`, icons; CI copies `remote/` into `site/remote/`. Full SPEC "Phone app" + data contract. A `?demo=1` in-memory fake backend for testing; never write to real Firebase in tests.
 Verify: preview folded (~360px) + unfolded (~880px), light + dark, demo flows (launch, reorder, hide/unhide, unpair), no console errors.

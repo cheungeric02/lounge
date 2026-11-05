@@ -33,6 +33,22 @@
     <string name="settings_home_on">On</string>
     <string name="settings_home_off">Off — Home goes to the stock launcher</string>
     <string name="settings_open_accessibility">Open Accessibility settings</string>
+    <string name="settings_home_steps">On the TV: Settings → System → Accessibility (or Device Preferences → Accessibility) → Lounge Home button → On.</string>
+    <!-- T9: Phone remote -->
+    <string name="settings_remote">Phone remote</string>
+    <string name="settings_remote_on">On</string>
+    <string name="settings_remote_off">Off</string>
+    <string name="settings_remote_short_url">cheungeric02.github.io/lounge/remote</string>
+    <string name="settings_remote_scan">Scan the QR code with your phone, or open the address below and type the key.</string>
+    <string name="settings_remote_status_connected">Connected</string>
+    <string name="settings_remote_status_connecting">Connecting…</string>
+    <string name="settings_remote_status_offline">Offline</string>
+    <string name="settings_remote_status_off">Off</string>
+    <string name="settings_remote_new_key">New key</string>
+    <string name="settings_remote_new_key_confirm">Your phone will need to pair again.</string>
+    <string name="settings_remote_new_key_yes">Make new key</string>
+    <string name="settings_remote_cancel">Cancel</string>
+    <string name="settings_remote_home_off_note">Turn on the Home button so the phone can open apps while another app is playing.</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_current_version">Current version: v%1$d</string>
     <string name="settings_check_updates">Check for updates</string>

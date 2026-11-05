@@ -2,7 +2,7 @@
 
 - `CLAUDE.md` — agent rules + commands
 - `docs/SPEC.md` — product + technical spec (source of truth)
-- `docs/PLAN.md` — tasks T1–T6 with status
+- `docs/PLAN.md` — tasks T1–T10 with status
 - `.gitignore` — excludes builds, local.properties, keystores
 - `settings.gradle.kts` / `build.gradle.kts` — root Gradle config (repos, plugin aliases)
 - `gradle.properties` — Gradle/AndroidX flags
@@ -35,8 +35,8 @@
 - `app/src/test/java/ca/cheungeric/lounge/data/` — HomeLayoutTest, WeatherTest
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService; holds a RemoteBridge ref while connected; static `loungeIntent()` + `performBack()` hooks
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeDecider.kt` — pure Home-key / stock-launcher-window decision logic (KeyDecision, STOCK_LAUNCHERS)
-- `app/src/main/java/ca/cheungeric/lounge/home/HomeServiceStatus.kt` — isEnabled(context) + openAccessibilitySettings(context)
-- `app/src/test/java/ca/cheungeric/lounge/home/HomeDeciderTest.kt` — decider + enabled-list parser tests
+- `app/src/main/java/ca/cheungeric/lounge/home/HomeServiceStatus.kt` — isEnabled(context) + openAccessibilitySettings(context): Boolean (ordered ACCESSIBILITY_TARGETS: TV Settings components, then actions; pure startableInOrder)
+- `app/src/test/java/ca/cheungeric/lounge/home/HomeDeciderTest.kt` — decider + enabled-list parser tests; `HomeServiceStatusTest.kt` — settings-target ordering
 - `app/src/main/java/ca/cheungeric/lounge/update/` — UpdateChecker (+ VersionInfo, parseVersionInfo, isNewer), UpdateState, UpdateManager (StateFlow, checkNow/install/daily auto-check, process-wide UpdateStatus), UpdateInstaller (+ sha256Hex/sha256Matches; download, verify, PackageInstaller session), InstallStatusReceiver
 - `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes/LoungeFocus tokens + LoungeTheme (typography 400/500, shapes)
 - `app/src/main/java/ca/cheungeric/lounge/ui/home/` — Home UI (T3):
@@ -53,7 +53,7 @@
   - `HomePreviews.kt` — TV_1080p previews with fake data
 - `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeButton.kt` — shared pill button with spring focus
 - `app/src/main/java/ca/cheungeric/lounge/ui/edit/TileActionSheet.kt` — hold-OK dialog (TileAction: move, favorite, hide, app info, cancel)
-- `app/src/main/java/ca/cheungeric/lounge/ui/settings/SettingsScreen.kt` — Settings sections (home button, updates + status text, hidden apps, patch notes, about)
+- `app/src/main/java/ca/cheungeric/lounge/ui/settings/SettingsScreen.kt` — Settings sections (home button + manual steps, phone remote [On/Off, QR + key + short URL, status, New key confirm, Home-off note], updates + status text, hidden apps, patch notes, about)
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt` — APP_VERSION (version source), PatchNote, PATCH_NOTES
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/WhatsNew.kt` — WhatsNewGate (pure), WhatsNewStore (lounge_prefs / lounge_lastSeenVer, captureFreshInstall), checkWhatsNew
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotesUi.kt` — PatchNoteEntry (shared renderer), PatchNotesList (Settings), WhatsNewDialog
