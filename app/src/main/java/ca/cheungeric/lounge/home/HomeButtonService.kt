@@ -2,13 +2,17 @@ package ca.cheungeric.lounge.home
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import ca.cheungeric.lounge.BuildConfig
+import ca.cheungeric.lounge.LoungeApp
 import ca.cheungeric.lounge.MainActivity
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Brings Lounge forward when Home is pressed (SPEC "Home button"). All decisions live in
@@ -18,9 +22,21 @@ class HomeButtonService : AccessibilityService() {
 
     private var decider: HomeDecider? = null
 
+    /** True while this instance holds a RemoteBridge reference (released exactly once). */
+    private val bridgeHeld = AtomicBoolean(false)
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         decider = HomeDecider(packageName)
+        connected = this
+        if (bridgeHeld.compareAndSet(false, true)) {
+            try {
+                (application as LoungeApp).container.remoteBridge.acquire()
+            } catch (t: Throwable) {
+                bridgeHeld.set(false)
+                debug("remote bridge acquire failed: ${t.javaClass.simpleName}")
+            }
+        }
         // Re-assert the XML config at runtime; some OEM builds ignore parts of the XML.
         try {
             val info = serviceInfo ?: AccessibilityServiceInfo()
@@ -63,21 +79,30 @@ class HomeButtonService : AccessibilityService() {
         // no-op: we give no spoken/haptic feedback that could be interrupted.
     }
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        disconnect()
+        return super.onUnbind(intent)
+    }
+
     override fun onDestroy() {
         decider = null
+        disconnect()
         super.onDestroy()
     }
 
+    private fun disconnect() {
+        if (connected === this) connected = null
+        if (bridgeHeld.compareAndSet(true, false)) {
+            try {
+                (application as LoungeApp).container.remoteBridge.release()
+            } catch (t: Throwable) {
+                debug("remote bridge release failed: ${t.javaClass.simpleName}")
+            }
+        }
+    }
+
     private fun launchLounge(source: String) {
-        // NEW_TASK: required to start an activity from a service context. With MainActivity
-        // being singleTask, the existing instance's task is brought forward and the intent is
-        // delivered to onNewIntent (no recreation). REORDER_TO_FRONT keeps that "bring forward,
-        // don't rebuild" behaviour on builds that treat the task differently. CLEAR_TOP is
-        // deliberately not used: it is redundant under singleTask and would disable
-        // REORDER_TO_FRONT.
-        val intent = Intent(this, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            .putExtra(EXTRA_FROM_HOME_BUTTON, true)
+        val intent = loungeIntent(this)
         try {
             startActivity(intent)
             debug("launched Lounge via $source")
@@ -97,6 +122,34 @@ class HomeButtonService : AccessibilityService() {
 
         /** Boolean extra on the launch intent; MainActivity.onNewIntent can reset to Home. */
         const val EXTRA_FROM_HOME_BUTTON = "ca.cheungeric.lounge.FROM_HOME_BUTTON"
+
+        /** The connected instance (cleared in onUnbind/onDestroy) for [performBack]. */
+        @SuppressLint("StaticFieldLeak")
+        @Volatile
+        private var connected: HomeButtonService? = null
+
+        /**
+         * The "bring Lounge forward" intent used for the Home key (and the phone remote's Home).
+         * NEW_TASK: required to start an activity from a service context. With MainActivity
+         * being singleTask, the existing instance's task is brought forward and the intent is
+         * delivered to onNewIntent (no recreation). REORDER_TO_FRONT keeps that "bring forward,
+         * don't rebuild" behaviour on builds that treat the task differently. CLEAR_TOP is
+         * deliberately not used: it is redundant under singleTask and would disable
+         * REORDER_TO_FRONT.
+         */
+        @JvmStatic
+        fun loungeIntent(context: Context): Intent =
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                .putExtra(EXTRA_FROM_HOME_BUTTON, true)
+
+        /** Global Back via the running service (phone remote). False if the service isn't connected. */
+        @JvmStatic
+        fun performBack(): Boolean = try {
+            connected?.performGlobalAction(GLOBAL_ACTION_BACK) ?: false
+        } catch (t: Throwable) {
+            false
+        }
 
         @Volatile
         private var allowStockUntil: Long = Long.MIN_VALUE
