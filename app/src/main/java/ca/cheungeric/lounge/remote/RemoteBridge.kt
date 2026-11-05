@@ -1,11 +1,17 @@
 package ca.cheungeric.lounge.remote
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
+import android.media.AudioManager
+import android.net.Uri
+import android.os.SystemClock
 import android.util.Log
+import android.widget.Toast
+import ca.cheungeric.lounge.R
 import ca.cheungeric.lounge.data.AppEntry
 import ca.cheungeric.lounge.data.AppsRepository
 import ca.cheungeric.lounge.data.HomeLayout
@@ -13,6 +19,7 @@ import ca.cheungeric.lounge.data.LayoutPrefs
 import ca.cheungeric.lounge.data.LayoutPrefsState
 import ca.cheungeric.lounge.home.HomeButtonService
 import ca.cheungeric.lounge.home.HomeServiceStatus
+import ca.cheungeric.lounge.home.MediaAccessStatus
 import ca.cheungeric.lounge.ui.patchnotes.APP_VERSION
 import ca.cheungeric.lounge.ui.patchnotes.WhatsNewStore
 import kotlinx.coroutines.CancellationException
@@ -40,6 +47,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -72,6 +80,12 @@ class RemoteBridge(
     private var job: Job? = null
     private var runningKey: String? = null
     private var deleteJob: Job? = null
+
+    private val mediaWatcher = MediaWatcher(app, ::labelFor)
+
+    /** Last access result from [MediaWatcher] (tv/status `mediaAccess`). */
+    @Volatile
+    private var mediaAccess = false
 
     private val _key = MutableStateFlow(readKey())
     val key: StateFlow<String?> = _key.asStateFlow()
@@ -178,31 +192,272 @@ class RemoteBridge(
 
     private suspend fun run(key: String) = coroutineScope {
         val base = "lounge/$key"
-        val session = Session(base)
+        val session = Session(base, this)
         launch { statusLoop(base) }
         launch { publishApps(session) }
         launch { publishLayout(base) }
-        launch { commandLoop(base) }
+        launch { commandLoop(session) }
+        launch { mediaLoop(session) }
+        launch { volumeLoop(session) }
+        launch { inputLoop(base) }
+        launch { retrying("sleep rearm") { rearmSleep(session) } }
     }
 
     /** Per-run state (a new key starts from an empty node). */
-    private class Session(val base: String) {
+    private class Session(val base: String, val scope: CoroutineScope) {
         /** pkg → iconHash already uploaded to tv/icons. */
         val uploaded = HashMap<String, String>()
         var seeded = false
         var lastAppsJson: String? = null
+
+        // v3. Media fields: media coroutine only. Volume: volume coroutine. Sleep: command coroutine + its job.
+        /** sha1 of the tv/art bytes on the server; null = unknown (first publish deletes stale art). */
+        var artHash: String? = null
+        var artSrc: Bitmap? = null
+        var artBytes: ByteArray? = null
+        var lastChosen: NowPlaying.Session? = null
+        var nowPlayingPublished = false
+        var lastVolumeJson: String? = null
+        val volumeKick = Channel<Unit>(Channel.CONFLATED)
+
+        @Volatile
+        var sleepJob: Job? = null
     }
 
+    /** Writes tv/status at once when a field changes, else every 60 s (lastSeen heartbeat). */
     private suspend fun statusLoop(base: String) {
+        var last: String? = null
+        var lastAt = 0L
+        while (true) {
+            val json = RemotePayloads.status(
+                APP_VERSION,
+                HomeServiceStatus.isEnabled(app),
+                mediaAccess,
+                HomeButtonService.isRunning(),
+            )
+            val now = SystemClock.elapsedRealtime()
+            if (json != last || now - lastAt >= STATUS_INTERVAL_MS) {
+                try {
+                    db.put("$base/tv/status", json)
+                    last = json
+                    lastAt = now
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (t: Throwable) {
+                    log("status", t)
+                }
+            }
+            delay(STATUS_CHECK_MS)
+        }
+    }
+
+    // ---- v3: Now Playing ----
+
+    @OptIn(FlowPreview::class)
+    private suspend fun mediaLoop(s: Session) {
         while (true) {
             try {
-                db.put("$base/tv/status", RemotePayloads.status(APP_VERSION, HomeServiceStatus.isEnabled(app)))
+                mediaWatcher.reports()
+                    .distinctUntilChanged()
+                    .debounce(MEDIA_DEBOUNCE_MS)
+                    .collectLatest { r ->
+                        mediaAccess = r.access
+                        retrying("nowPlaying") { publishMedia(s, r) }
+                    }
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
-                log("status", t)
+                log("media", t)
             }
-            delay(STATUS_INTERVAL_MS)
+            // Flow ended: no access (or revoked). Status shows mediaAccess:false; check again later.
+            if (!MediaAccessStatus.isGranted(app)) mediaAccess = false
+            delay(MEDIA_RETRY_MS)
+        }
+    }
+
+    private suspend fun publishMedia(s: Session, r: MediaWatcher.Report) {
+        val chosen = if (r.access) NowPlaying.choose(r.sessions) else null
+        val bmp = chosen?.let { r.art[it.pkg] }
+        val bytes = when {
+            bmp == null -> null
+            bmp === s.artSrc -> s.artBytes
+            else -> withContext(Dispatchers.Default) { MediaWatcher.encodeArt(bmp) }.also {
+                s.artSrc = bmp
+                s.artBytes = it
+            }
+        }
+        val hash = bytes?.let(RemotePayloads::sha1Hex) ?: ""
+        val artChanged = hash != s.artHash
+        if (!artChanged && s.nowPlayingPublished && !NowPlaying.needsRepublish(s.lastChosen, chosen)) return
+        if (artChanged) {
+            // Art first, so a published artHash always has its art.
+            if (bytes != null) {
+                db.put("${s.base}/tv/art", RemotePayloads.jsonString(RemotePayloads.jpegDataUri(bytes)))
+            } else {
+                db.delete("${s.base}/tv/art")
+            }
+            s.artHash = hash
+        }
+        db.put(
+            "${s.base}/tv/nowPlaying",
+            NowPlaying.payload(chosen, hash, SystemClock.elapsedRealtime(), db.serverNowMs()),
+        )
+        s.lastChosen = chosen
+        s.nowPlayingPublished = true
+    }
+
+    // ---- v3: volume ----
+
+    private suspend fun volumeLoop(s: Session) {
+        while (true) {
+            try {
+                volumeJson()?.let { json ->
+                    if (json != s.lastVolumeJson) {
+                        db.put("${s.base}/tv/volume", json)
+                        s.lastVolumeJson = json
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                log("volume", t)
+            }
+            withTimeoutOrNull(VOLUME_POLL_MS) { s.volumeKick.receive() }
+        }
+    }
+
+    private fun audio(): AudioManager? = try {
+        app.getSystemService(AudioManager::class.java)
+    } catch (t: Throwable) {
+        null
+    }
+
+    private fun volumeJson(): String? {
+        val am = audio() ?: return null
+        return try {
+            RemotePayloads.volume(
+                am.getStreamVolume(AudioManager.STREAM_MUSIC),
+                am.getStreamMaxVolume(AudioManager.STREAM_MUSIC),
+                am.isStreamMute(AudioManager.STREAM_MUSIC),
+            )
+        } catch (t: Throwable) {
+            log("read volume", t)
+            null
+        }
+    }
+
+    private suspend fun adjustVolume(s: Session, action: RemoteCommand.VolumeAction) {
+        val am = audio() ?: return
+        val dir = when (action) {
+            RemoteCommand.VolumeAction.Up -> AudioManager.ADJUST_RAISE
+            RemoteCommand.VolumeAction.Down -> AudioManager.ADJUST_LOWER
+            RemoteCommand.VolumeAction.Mute -> AudioManager.ADJUST_TOGGLE_MUTE
+        }
+        withContext(Dispatchers.Main) {
+            am.adjustStreamVolume(AudioManager.STREAM_MUSIC, dir, AudioManager.FLAG_SHOW_UI)
+        }
+        delay(VOLUME_SETTLE_MS)
+        s.volumeKick.trySend(Unit)
+    }
+
+    // ---- v3: typing ----
+
+    @OptIn(FlowPreview::class)
+    private suspend fun inputLoop(base: String) {
+        TvInput.state
+            .debounce(INPUT_DEBOUNCE_MS)
+            .map(TvInput::payload)
+            .distinctUntilChanged()
+            .collectLatest { json -> retrying("input") { db.put("$base/tv/input", json) } }
+    }
+
+    // ---- v3: sleep timer ----
+
+    /** Bridge (re)start: re-arm a still-future tv/sleep, delete an expired one (never fire late). */
+    private suspend fun rearmSleep(s: Session) {
+        val json = db.get("${s.base}/tv/sleep")
+        when (val d = SleepTimer.rearm(json, db.serverNowMs())) {
+            SleepTimer.Rearm.None -> Unit
+            SleepTimer.Rearm.Clear -> if (s.sleepJob == null) db.delete("${s.base}/tv/sleep")
+            is SleepTimer.Rearm.Arm -> if (s.sleepJob == null) armSleep(s, d.delayMs)
+        }
+    }
+
+    private suspend fun setSleep(s: Session, minutes: Int) {
+        s.sleepJob?.cancel()
+        s.sleepJob = null
+        val now = db.serverNowMs()
+        val at = SleepTimer.atFor(minutes, now)
+        if (at == null) {
+            db.delete("${s.base}/tv/sleep")
+            return
+        }
+        armSleep(s, at - now)
+        db.put("${s.base}/tv/sleep", RemotePayloads.sleep(at))
+    }
+
+    private fun armSleep(s: Session, delayMs: Long) {
+        s.sleepJob?.cancel()
+        s.sleepJob = s.scope.launch {
+            delay(delayMs.coerceAtLeast(0))
+            try {
+                onSleepExpired()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                log("sleep expiry", t)
+            }
+            retrying("sleep clear") { db.delete("${s.base}/tv/sleep") }
+        }
+    }
+
+    /** Pause playback, go to Lounge Home, then try the screensaver (failure ignored). */
+    private suspend fun onSleepExpired() {
+        mediaWatcher.pausePlaying()
+        withContext(Dispatchers.Main) {
+            runCatching { app.startActivity(HomeButtonService.loungeIntent(app)) }
+        }
+        delay(SCREENSAVER_DELAY_MS)
+        withContext(Dispatchers.Main) {
+            runCatching {
+                app.startActivity(
+                    Intent(Intent.ACTION_MAIN)
+                        .setComponent(ComponentName(SYSTEMUI_PKG, "$SYSTEMUI_PKG.Somnambulator"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+        }
+    }
+
+    // ---- v3: open link ----
+
+    private suspend fun openLink(url: String) {
+        val route = LinkRouter.route(url) ?: return
+        withContext(Dispatchers.Main) {
+            val pm = app.packageManager
+            for (pkg in route.targets) {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(route.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (pkg != null) intent.setPackage(pkg)
+                val resolves = runCatching { pm.resolveActivity(intent, 0) != null }.getOrDefault(false)
+                if (!resolves) continue
+                try {
+                    app.startActivity(intent)
+                    return@withContext
+                } catch (t: Throwable) {
+                    log("open $pkg", t)
+                }
+            }
+            runCatching { Toast.makeText(app, R.string.remote_cant_open_link, Toast.LENGTH_LONG).show() }
+        }
+    }
+
+    private fun labelFor(pkg: String): String {
+        appsRepository.apps.value.firstOrNull { it.packageName == pkg }?.let { return it.label }
+        return try {
+            val pm = app.packageManager
+            pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+        } catch (t: Throwable) {
+            pkg
         }
     }
 
@@ -269,7 +524,8 @@ class RemoteBridge(
             .collectLatest { json -> retrying("layout") { db.put("$base/tv/layout", json) } }
     }
 
-    private suspend fun commandLoop(base: String) = coroutineScope {
+    private suspend fun commandLoop(s: Session) = coroutineScope {
+        val base = s.base
         val events = Channel<SseEvent>(Channel.UNLIMITED)
         val handled = object : LinkedHashMap<String, Boolean>(64, 0.75f, false) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Boolean>?) = size > 256
@@ -288,7 +544,7 @@ class RemoteBridge(
                     }
                     val cmd = RemoteCommand.parseFresh(el, db.serverNowMs()) ?: continue
                     try {
-                        apply(cmd)
+                        apply(cmd, s)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (t: Throwable) {
@@ -327,7 +583,7 @@ class RemoteBridge(
 
     private class StreamClosed(msg: String) : Exception(msg)
 
-    private suspend fun apply(cmd: RemoteCommand) {
+    private suspend fun apply(cmd: RemoteCommand, s: Session) {
         val apps = appsRepository.apps.value
         val installed = apps.map { it.packageName }
         when (cmd) {
@@ -354,6 +610,12 @@ class RemoteBridge(
             is RemoteCommand.MoveFavorite -> edit(cmd.pkg, installed) {
                 HomeLayout.moveFavoriteTo(it, cmd.pkg, cmd.to, installed)
             }
+            is RemoteCommand.Media -> mediaWatcher.transport(cmd.action, cmd.ms)
+            is RemoteCommand.Volume -> adjustVolume(s, cmd.action)
+            is RemoteCommand.Sleep -> setSleep(s, cmd.minutes)
+            is RemoteCommand.Open -> openLink(cmd.url)
+            is RemoteCommand.Text -> withContext(Dispatchers.Main) { HomeButtonService.setText(cmd.text) }
+            RemoteCommand.Submit -> withContext(Dispatchers.Main) { HomeButtonService.submit() }
         }
     }
 
@@ -434,6 +696,14 @@ class RemoteBridge(
         const val KEY_ENABLED = "lounge_remoteEnabled"
         const val KEY_KEY = "lounge_remoteKey"
         private const val STATUS_INTERVAL_MS = 60_000L
+        private const val STATUS_CHECK_MS = 5_000L
+        private const val MEDIA_DEBOUNCE_MS = 300L
+        private const val MEDIA_RETRY_MS = 10_000L
+        private const val VOLUME_POLL_MS = 5_000L
+        private const val VOLUME_SETTLE_MS = 150L
+        private const val INPUT_DEBOUNCE_MS = 200L
+        private const val SCREENSAVER_DELAY_MS = 800L
+        private const val SYSTEMUI_PKG = "com.android.systemui"
         private const val DEBOUNCE_MS = 500L
         private const val BACKOFF_MIN_MS = 2_000L
         private const val BACKOFF_MAX_MS = 60_000L

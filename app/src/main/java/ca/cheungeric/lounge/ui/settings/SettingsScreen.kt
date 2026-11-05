@@ -62,6 +62,8 @@ fun SettingsScreen(
     remoteStatus: RemoteStatus,
     onRemoteToggle: (Boolean) -> Unit,
     onRemoteNewKey: () -> Unit,
+    mediaAccessGranted: Boolean,
+    onOpenMediaAccess: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val firstButton = remember { FocusRequester() }
@@ -110,6 +112,8 @@ fun SettingsScreen(
                 homeServiceEnabled = homeServiceEnabled,
                 onToggle = onRemoteToggle,
                 onNewKey = onRemoteNewKey,
+                mediaAccessGranted = mediaAccessGranted,
+                onOpenMediaAccess = onOpenMediaAccess,
             )
         }
 
@@ -192,6 +196,8 @@ private fun PhoneRemoteSection(
     homeServiceEnabled: Boolean,
     onToggle: (Boolean) -> Unit,
     onNewKey: () -> Unit,
+    mediaAccessGranted: Boolean,
+    onOpenMediaAccess: () -> Unit,
 ) {
     var confirming by remember(enabled) { mutableStateOf(false) }
     // Bumped when the confirm row closes so focus returns to "New key" instead of being lost.
@@ -241,6 +247,7 @@ private fun PhoneRemoteSection(
             color = LoungeColors.OnSurfaceVariant,
         )
     }
+    NowPlayingAccessRow(mediaAccessGranted, onOpenMediaAccess)
     if (confirming) {
         LaunchedEffect(Unit) {
             withFrameNanos { }
@@ -283,6 +290,27 @@ private fun PhoneRemoteSection(
             modifier = Modifier.focusRequester(newKeyButton),
         )
     }
+}
+
+/** Phone remote -> Now Playing access: status, a shortcut to Notification access, always-visible manual steps. */
+@Composable
+private fun NowPlayingAccessRow(granted: Boolean, onOpen: () -> Unit) {
+    Text(
+        stringResource(R.string.settings_media_access),
+        style = MaterialTheme.typography.titleLarge,
+        color = LoungeColors.OnSurface,
+    )
+    Text(
+        stringResource(if (granted) R.string.settings_media_access_granted else R.string.settings_media_access_not_granted),
+        style = MaterialTheme.typography.titleLarge,
+        color = LoungeColors.OnSurfaceVariant,
+    )
+    LoungeButton(stringResource(R.string.settings_open_media_access), onClick = onOpen)
+    Text(
+        stringResource(R.string.settings_media_access_steps),
+        style = MaterialTheme.typography.titleLarge,
+        color = LoungeColors.OnSurfaceVariant,
+    )
 }
 
 internal fun remoteStatusText(status: RemoteStatus): Int = when (status) {

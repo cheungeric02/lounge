@@ -19,11 +19,11 @@
 - `.github/pages/index.template.html` — Pages download page template (@VC@, @SHA@, @SIZE_MB@ filled by CI)
 - `app/build.gradle.kts` — app module: SDK levels, versionCode from APP_VERSION regex, release signing (keystore.properties or LOUNGE_* env)
 - `app/proguard-rules.pro` — empty (minify off)
-- `app/src/main/AndroidManifest.xml` — full manifest (HOME/LEANBACK activity, accessibility service, install receiver, permissions, queries); declared up front in T1
-- `app/src/main/res/xml/home_button_service.xml` — accessibility service config
+- `app/src/main/AndroidManifest.xml` — full manifest (HOME/LEANBACK activity, accessibility service, install receiver, permissions, queries); declared up front in T1; v3 (T11) adds MediaAccessService (notification listener) + queries for LinkRouter target apps, http(s) VIEW and Notification access settings
+- `app/src/main/res/xml/home_button_service.xml` — accessibility service config (window state + view focus/text events, key filtering, interactive windows, window content for phone typing)
 - `app/src/main/res/drawable/banner.xml`, `ic_launcher.xml` — placeholder "L" TV banner (320x180) + icon
 - `app/src/main/res/values/` — strings, colors, window theme
-- `app/src/main/java/ca/cheungeric/lounge/MainActivity.kt` — launcher activity: in-memory Home|Settings nav + Back, tile sheet, What's New gate, app launching + 3 s snack, update banner / home-button tip (lounge_prefs `lounge_homeTipDismissed`), weather refresh while STARTED, remoteBridge acquire/release in onStart/onStop, onNewIntent → Home
+- `app/src/main/java/ca/cheungeric/lounge/MainActivity.kt` — launcher activity: in-memory Home|Settings nav + Back, tile sheet, What's New gate, app launching + 3 s snack, update banner / home-button tip (lounge_prefs `lounge_homeTipDismissed`), weather refresh while STARTED, remoteBridge acquire/release in onStart/onStop, onNewIntent → Home, Now Playing access state refreshed on create/resume
 - `app/src/main/java/ca/cheungeric/lounge/LoungeApp.kt` — Application; builds AppContainer
 - `app/src/main/java/ca/cheungeric/lounge/AppContainer.kt` — manual DI container (repos, layoutPrefs, appScope, updateManager, remoteBridge)
 - `app/src/main/java/ca/cheungeric/lounge/data/` — data layer:
@@ -33,10 +33,12 @@
   - `HomeLayout.kt` — pure `build` + transforms (initDefaults, toggleFavorite, hide/unhide, moveLeft/Right, moveFavoriteTo), `DEFAULT_FAVORITES`, HomeState
   - `WeatherRepository.kt` — Open-Meteo fetch + DataStore "lounge_weather" cache + `startAutoRefresh`; Weather, WeatherParser, WeatherCodes (WMO → WeatherDescription/WeatherIconKey)
 - `app/src/test/java/ca/cheungeric/lounge/data/` — HomeLayoutTest, WeatherTest
-- `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService; holds a RemoteBridge ref while connected; static `loungeIntent()` + `performBack()` hooks
+- `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService; holds a RemoteBridge ref while connected; static `loungeIntent()` + `performBack()` hooks; v3: tracks the focused editable (never password) field into TvInput, `isRunning()`, `setText()` (ACTION_SET_TEXT), `submit()` (ACTION_IME_ENTER, API 30+)
+- `app/src/main/java/ca/cheungeric/lounge/home/MediaAccessService.kt` — empty NotificationListenerService; its grant unlocks MediaSessionManager.getActiveSessions
+- `app/src/main/java/ca/cheungeric/lounge/home/MediaAccessStatus.kt` — isGranted(context) + openSettings(context): Boolean (ordered NOTIFICATION_ACCESS_TARGETS, reuses startableInOrder)
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeDecider.kt` — pure Home-key / stock-launcher-window decision logic (KeyDecision, STOCK_LAUNCHERS)
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeServiceStatus.kt` — isEnabled(context) + openAccessibilitySettings(context): Boolean (ordered ACCESSIBILITY_TARGETS: TV Settings components, then actions; pure startableInOrder)
-- `app/src/test/java/ca/cheungeric/lounge/home/HomeDeciderTest.kt` — decider + enabled-list parser tests; `HomeServiceStatusTest.kt` — settings-target ordering
+- `app/src/test/java/ca/cheungeric/lounge/home/HomeDeciderTest.kt` — decider + enabled-list parser tests; `HomeServiceStatusTest.kt` — settings-target ordering; `MediaAccessStatusTest.kt` — Notification access target ordering
 - `app/src/main/java/ca/cheungeric/lounge/update/` — UpdateChecker (+ VersionInfo, parseVersionInfo, isNewer), UpdateState, UpdateManager (StateFlow, checkNow/install/daily auto-check, process-wide UpdateStatus), UpdateInstaller (+ sha256Hex/sha256Matches; download, verify, PackageInstaller session), InstallStatusReceiver
 - `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes/LoungeFocus tokens + LoungeTheme (typography 400/500, shapes)
 - `app/src/main/java/ca/cheungeric/lounge/ui/home/` — Home UI (T3):
@@ -53,7 +55,7 @@
   - `HomePreviews.kt` — TV_1080p previews with fake data
 - `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeButton.kt` — shared pill button with spring focus
 - `app/src/main/java/ca/cheungeric/lounge/ui/edit/TileActionSheet.kt` — hold-OK dialog (TileAction: move, favorite, hide, app info, cancel)
-- `app/src/main/java/ca/cheungeric/lounge/ui/settings/SettingsScreen.kt` — Settings sections (home button + manual steps, phone remote [On/Off, QR + key + short URL, status, New key confirm, Home-off note], updates + status text, hidden apps, patch notes, about)
+- `app/src/main/java/ca/cheungeric/lounge/ui/settings/SettingsScreen.kt` — Settings sections (home button + manual steps, phone remote [On/Off, QR + key + short URL, status, Now Playing access row (Granted/Not granted, Open, manual steps), New key confirm, Home-off note], updates + status text, hidden apps, patch notes, about)
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt` — APP_VERSION (version source), PatchNote, PATCH_NOTES
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/WhatsNew.kt` — WhatsNewGate (pure), WhatsNewStore (lounge_prefs / lounge_lastSeenVer, captureFreshInstall), checkWhatsNew
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotesUi.kt` — PatchNoteEntry (shared renderer), PatchNotesList (Settings), WhatsNewDialog
@@ -63,10 +65,15 @@
   - `RemoteKey.kt` — generate/validate/normalize (bare key or pairing URL `#k=`), pairingUrl
   - `SseParser.kt` — pure incremental Firebase REST stream parser (SseEvent: Put/Patch/KeepAlive/Cancel/AuthRevoked)
   - `FirebaseRest.kt` — RemoteDb interface + HttpURLConnection impl (get/put/patch/delete/stream, 307 follow, Date-header clock offset, `urlFor` guard: only `lounge/<validKey>[/…]`)
-  - `RemoteCommand.kt` — pure command parse/freshness (30 s), pkgKey helpers, childrenOf(stream event)
-  - `RemotePayloads.kt` — pure tv/status, tv/apps, tv/layout JSON builders + sha1/data-URI
-  - `RemoteBridge.kt` — process-wide ref-counted bridge (AppContainer.remoteBridge): prefs lounge_remoteEnabled/lounge_remoteKey, setEnabled/regenerateKey, key + status StateFlows, publishes status/apps/layout/icons, consumes cmd/, backoff 2→60 s
-- `app/src/test/java/ca/cheungeric/lounge/remote/` — SseParser, RemoteCommand, RemoteKey (+ path guard, WordList), RemotePayloads tests; `data/MoveFavoriteToTest.kt`
+  - `RemoteCommand.kt` — pure command parse/freshness (30 s), pkgKey helpers, childrenOf(stream event); v3 media/volume/sleep/open/text/submit
+  - `RemotePayloads.kt` — pure tv/status (+mediaAccess, typing), tv/apps, tv/layout, tv/volume, tv/sleep JSON builders + sha1/PNG/JPEG data-URI
+  - `NowPlaying.kt` — pure Now Playing: session choice, positionAt extrapolation, seek clamp, republish check, tv/nowPlaying payload, art fitWithin
+  - `MediaWatcher.kt` — MediaSessionManager/MediaController watcher (callbackFlow of Reports; no access → NO_ACCESS, never throws), transport controls, art JPEG encode (≤320×320)
+  - `LinkRouter.kt` — pure `open` URL validation (http(s), ≤2048) + app routing (YouTube incl. youtu.be/shorts → watch, Netflix, Spotify, Prime, Disney+, else plain VIEW)
+  - `SleepTimer.kt` — pure sleep expiry (≤240 min) + bridge-restart rearm decision
+  - `TvInput.kt` — InputSnapshot + process-wide focused-field StateFlow (HomeButtonService → bridge) + tv/input payload
+  - `RemoteBridge.kt` — process-wide ref-counted bridge (AppContainer.remoteBridge): prefs lounge_remoteEnabled/lounge_remoteKey, setEnabled/regenerateKey, key + status StateFlows, publishes status/apps/layout/icons, consumes cmd/, backoff 2→60 s; v3 publishes tv/nowPlaying + tv/art, tv/volume, tv/input, tv/sleep; handles media/volume/sleep/open/text/submit
+- `app/src/test/java/ca/cheungeric/lounge/remote/` — SseParser, RemoteCommand, RemoteKey (+ path guard, WordList), RemotePayloads, NowPlaying, LinkRouter, SleepTimer, TvInput tests; `data/MoveFavoriteToTest.kt`
 - `app/src/main/java/ca/cheungeric/lounge/remote/qr/QrEncoder.kt` — pure-Kotlin QR encoder (byte mode UTF-8, level M, v1–6, GF(256) Reed–Solomon, 8-mask penalty) + QrMatrix
 - `app/src/main/java/ca/cheungeric/lounge/remote/qr/QrCode.kt` — Composable QrCode(text): Canvas, black on white rounded card, 4-module quiet zone
 - `app/src/test/java/ca/cheungeric/lounge/remote/qr/` — QrEncoderTest + QrFixtures (segno-generated reference matrices)

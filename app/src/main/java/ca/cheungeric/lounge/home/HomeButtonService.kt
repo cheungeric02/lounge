@@ -5,13 +5,18 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import ca.cheungeric.lounge.BuildConfig
 import ca.cheungeric.lounge.LoungeApp
 import ca.cheungeric.lounge.MainActivity
+import ca.cheungeric.lounge.remote.InputSnapshot
+import ca.cheungeric.lounge.remote.TvInput
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -40,9 +45,11 @@ class HomeButtonService : AccessibilityService() {
         // Re-assert the XML config at runtime; some OEM builds ignore parts of the XML.
         try {
             val info = serviceInfo ?: AccessibilityServiceInfo()
-            info.eventTypes = info.eventTypes or AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            info.eventTypes = info.eventTypes or AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
+                AccessibilityEvent.TYPE_VIEW_FOCUSED or AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
             info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            info.flags = info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+            info.flags = info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS or
+                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
             info.notificationTimeout = 100
             serviceInfo = info
         } catch (t: Throwable) {
@@ -64,14 +71,107 @@ class HomeButtonService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null || event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        val d = decider ?: return
+        if (event == null) return
+        val type = event.eventType
+        if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val d = decider
+            if (d != null) {
+                try {
+                    val pkg = event.packageName?.toString()
+                    val foreground = loungeResumed || pkg == packageName
+                    if (d.onWindowChanged(pkg, now(), foreground, allowStockUntil)) launchLounge("window")
+                } catch (t: Throwable) {
+                    debug("onAccessibilityEvent failed: ${t.javaClass.simpleName}")
+                }
+            }
+        }
+        if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            type == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
+            type == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
+        ) {
+            trackInput()
+        }
+    }
+
+    /**
+     * Phone typing (SPEC "v3 → Typing"): publish only the focused, editable, non-password field.
+     * Skipped entirely while Phone remote is off, so nothing is read when nobody can use it.
+     */
+    private fun trackInput() {
         try {
-            val pkg = event.packageName?.toString()
-            val foreground = loungeResumed || pkg == packageName
-            if (d.onWindowChanged(pkg, now(), foreground, allowStockUntil)) launchLounge("window")
+            if (!remoteEnabled()) {
+                TvInput.set(InputSnapshot.NONE)
+                return
+            }
+            val node = focusedInput()
+            val snap = if (node == null) {
+                InputSnapshot.NONE
+            } else {
+                try {
+                    TvInput.fromNode(
+                        present = true,
+                        editable = node.isEditable,
+                        focused = node.isFocused,
+                        password = node.isPassword,
+                        pkg = node.packageName,
+                        hint = node.hintText,
+                        // Read text only after the editable/password checks inside fromNode pass.
+                        text = if (node.isEditable && !node.isPassword) node.text else null,
+                        showingHint = node.isShowingHintText,
+                    )
+                } finally {
+                    recycle(node)
+                }
+            }
+            TvInput.set(snap)
         } catch (t: Throwable) {
-            debug("onAccessibilityEvent failed: ${t.javaClass.simpleName}")
+            debug("trackInput failed: ${t.javaClass.simpleName}")
+        }
+    }
+
+    private fun remoteEnabled(): Boolean = try {
+        (application as LoungeApp).container.remoteBridge.isEnabled
+    } catch (t: Throwable) {
+        false
+    }
+
+    /** The node with input focus across interactive windows, or null. Caller recycles. */
+    private fun focusedInput(): AccessibilityNodeInfo? = try {
+        findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+    } catch (t: Throwable) {
+        null
+    }
+
+    /** ACTION_SET_TEXT on the focused editable node. */
+    private fun setFocusedText(text: String): Boolean {
+        val node = focusedInput() ?: return false
+        return try {
+            if (!node.isEditable) return false
+            val args = Bundle().apply {
+                putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+            }
+            node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        } finally {
+            recycle(node)
+        }
+    }
+
+    /** IME Enter on the focused editable node (API 30+; ignored below). */
+    private fun submitFocused(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+        val node = focusedInput() ?: return false
+        return try {
+            if (!node.isEditable) return false
+            node.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+        } finally {
+            recycle(node)
+        }
+    }
+
+    private fun recycle(node: AccessibilityNodeInfo) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            @Suppress("DEPRECATION")
+            runCatching { node.recycle() }
         }
     }
 
@@ -91,7 +191,10 @@ class HomeButtonService : AccessibilityService() {
     }
 
     private fun disconnect() {
-        if (connected === this) connected = null
+        if (connected === this) {
+            connected = null
+            TvInput.set(InputSnapshot.NONE)
+        }
         if (bridgeHeld.compareAndSet(true, false)) {
             try {
                 (application as LoungeApp).container.remoteBridge.release()
@@ -147,6 +250,26 @@ class HomeButtonService : AccessibilityService() {
         @JvmStatic
         fun performBack(): Boolean = try {
             connected?.performGlobalAction(GLOBAL_ACTION_BACK) ?: false
+        } catch (t: Throwable) {
+            false
+        }
+
+        /** True while the service is connected (tv/status `typing`). */
+        @JvmStatic
+        fun isRunning(): Boolean = connected != null
+
+        /** Phone `text`: replaces the focused editable field's value. Call on the main thread. */
+        @JvmStatic
+        fun setText(text: String): Boolean = try {
+            connected?.setFocusedText(text) ?: false
+        } catch (t: Throwable) {
+            false
+        }
+
+        /** Phone `submit`: IME Enter on the focused field (API 30+). Call on the main thread. */
+        @JvmStatic
+        fun submit(): Boolean = try {
+            connected?.submitFocused() ?: false
         } catch (t: Throwable) {
             false
         }

@@ -20,9 +20,11 @@ class RemotePayloadsTest {
 
     @Test
     fun status() {
-        val o = Json.parseToJsonElement(RemotePayloads.status(3, true)).jsonObject
+        val o = Json.parseToJsonElement(RemotePayloads.status(3, true, false, true)).jsonObject
         assertEquals("3", o["appVersion"]!!.jsonPrimitive.content)
         assertEquals("true", o["homeService"]!!.jsonPrimitive.content)
+        assertEquals("false", o["mediaAccess"]!!.jsonPrimitive.content)
+        assertEquals("true", o["typing"]!!.jsonPrimitive.content)
         assertEquals("timestamp", o["lastSeen"]!!.jsonObject[".sv"]!!.jsonPrimitive.content)
     }
 

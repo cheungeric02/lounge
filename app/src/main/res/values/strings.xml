@@ -49,6 +49,14 @@
     <string name="settings_remote_new_key_yes">Make new key</string>
     <string name="settings_remote_cancel">Cancel</string>
     <string name="settings_remote_home_off_note">Turn on the Home button so the phone can open apps while another app is playing.</string>
+    <!-- T11: Now Playing access, open link -->
+    <string name="media_access_service_label">Lounge Now Playing</string>
+    <string name="settings_media_access">Now Playing access</string>
+    <string name="settings_media_access_granted">Granted</string>
+    <string name="settings_media_access_not_granted">Not granted — the phone can\'t show or control what\'s playing</string>
+    <string name="settings_open_media_access">Open Notification access</string>
+    <string name="settings_media_access_steps">On the TV: Settings → Apps → Special app access → Notification access → Lounge.</string>
+    <string name="remote_cant_open_link">Can\'t open that link on this TV</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_current_version">Current version: v%1$d</string>
     <string name="settings_check_updates">Check for updates</string>

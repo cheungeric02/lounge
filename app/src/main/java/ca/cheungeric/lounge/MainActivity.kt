@@ -32,6 +32,7 @@ import androidx.tv.material3.Text
 import ca.cheungeric.lounge.data.AppEntry
 import ca.cheungeric.lounge.home.HomeButtonService
 import ca.cheungeric.lounge.home.HomeServiceStatus
+import ca.cheungeric.lounge.home.MediaAccessStatus
 import ca.cheungeric.lounge.ui.edit.TileAction
 import ca.cheungeric.lounge.ui.edit.TileActionSheet
 import ca.cheungeric.lounge.ui.home.HomeButtonTip
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
     private var whatsNew by mutableStateOf<List<PatchNote>>(emptyList())
     private var snack by mutableStateOf<Snack?>(null)
     private var homeServiceEnabled by mutableStateOf(true)
+    private var mediaAccessGranted by mutableStateOf(false)
     private var homeTipDismissed by mutableStateOf(true)
     /** Mirrors RemoteBridge.isEnabled (Settings → Phone remote). */
     private var remoteEnabled by mutableStateOf(false)
@@ -86,6 +88,7 @@ class MainActivity : ComponentActivity() {
         remoteEnabled = bridge.isEnabled
         homeTipDismissed = readTipDismissed()
         homeServiceEnabled = HomeServiceStatus.isEnabled(this)
+        mediaAccessGranted = MediaAccessStatus.isGranted(this)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -137,6 +140,8 @@ class MainActivity : ComponentActivity() {
                                     remoteEnabled = bridge.isEnabled
                                 },
                                 onRemoteNewKey = bridge::regenerateKey,
+                                mediaAccessGranted = mediaAccessGranted,
+                                onOpenMediaAccess = { MediaAccessStatus.openSettings(this@MainActivity) },
                             )
                         }
                     }
@@ -239,6 +244,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         HomeButtonService.setLoungeResumed(true)
         homeServiceEnabled = HomeServiceStatus.isEnabled(this)
+        mediaAccessGranted = MediaAccessStatus.isGranted(this)
         container.appsRepository.refresh()
     }
 

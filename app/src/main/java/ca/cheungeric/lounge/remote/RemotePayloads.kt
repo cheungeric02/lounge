@@ -15,9 +15,11 @@ import java.util.Base64
 object RemotePayloads {
 
     /** `tv/status`; lastSeen is the RTDB server-timestamp placeholder. */
-    fun status(appVersion: Int, homeService: Boolean): String = buildJsonObject {
+    fun status(appVersion: Int, homeService: Boolean, mediaAccess: Boolean, typing: Boolean): String = buildJsonObject {
         put("appVersion", appVersion)
         put("homeService", homeService)
+        put("mediaAccess", mediaAccess)
+        put("typing", typing)
         put("lastSeen", buildJsonObject { put(".sv", "timestamp") })
     }.toString()
 
@@ -52,10 +54,22 @@ object RemotePayloads {
         ).toString()
     }
 
+    /** `tv/volume` for STREAM_MUSIC. */
+    fun volume(level: Int, max: Int, muted: Boolean): String = buildJsonObject {
+        put("level", level.coerceAtLeast(0))
+        put("max", max.coerceAtLeast(0))
+        put("muted", muted)
+    }.toString()
+
+    /** `tv/sleep` while armed: `{at: <server ms>}`. */
+    fun sleep(at: Long): String = buildJsonObject { put("at", at) }.toString()
+
     fun sha1Hex(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-1").digest(bytes).joinToString("") { "%02x".format(it) }
 
     fun pngDataUri(png: ByteArray): String = "data:image/png;base64," + Base64.getEncoder().encodeToString(png)
+
+    fun jpegDataUri(jpeg: ByteArray): String = "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(jpeg)
 
     /** JSON string literal for a PUT of a bare string value. */
     fun jsonString(s: String): String = JsonPrimitive(s).toString()
