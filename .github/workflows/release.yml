@@ -92,6 +92,11 @@ jobs:
 
           # Self-check: version.json's hash matches the APK being uploaded.
           echo "$(jq -r .sha256 site/version.json)  site/lounge.apk" | sha256sum -c -
+
+          # Lounge Remote phone web app → https://cheungeric02.github.io/lounge/remote/
+          test -f remote/index.html
+          mkdir -p site/remote
+          cp -R remote/. site/remote/
           touch site/.nojekyll
           cat site/version.json
 
