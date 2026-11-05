@@ -93,12 +93,12 @@ jobs:
           # Self-check: version.json's hash matches the APK being uploaded.
           echo "$(jq -r .sha256 site/version.json)  site/lounge.apk" | sha256sum -c -
 
-          # Lounge Remote phone web app → https://cheungeric02.github.io/lounge/app/
-          # (moved from /lounge/remote/ in web v6; that path now only redirects + kills the old SW)
-          test -f remote/index.html
-          mkdir -p site/app site/remote
-          cp -R remote/. site/app/
-          cp .github/pages/remote-redirect/index.html .github/pages/remote-redirect/sw.js site/remote/
+          # Lounge Remote phone web app lives in its own repo → https://cheungeric02.github.io/lounge-remote/
+          # The old paths only redirect there (keeping #k= pairing hash) and kill the old service workers.
+          for d in remote app; do
+            mkdir -p site/$d
+            cp .github/pages/remote-redirect/index.html .github/pages/remote-redirect/sw.js site/$d/
+          done
           touch site/.nojekyll
           cat site/version.json
 

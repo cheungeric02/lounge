@@ -12,13 +12,14 @@
   a { color: #d0bcff; }
 </style>
 <script>
-  // Lounge Remote moved to /lounge/app/ (v6). Keep the query (share target) and #k= pairing hash.
+  // Lounge Remote moved to its own repo, /lounge-remote/ (web v7). Old paths /lounge/remote/ and
+  // /lounge/app/ land here. Keep the query and the #k= pairing hash (TV QR codes use /lounge/remote/#k=).
   (function () {
-    var dest = '/lounge/app/' + location.search + location.hash;
+    var dest = '/lounge-remote/' + location.search + location.hash;
     try {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (regs) {
-          regs.forEach(function (r) { if (new URL(r.scope).pathname.indexOf('/lounge/remote/') === 0) r.unregister(); });
+          regs.forEach(function (r) { var p = new URL(r.scope).pathname; if (p.indexOf('/lounge/remote/') === 0 || p.indexOf('/lounge/app/') === 0) r.unregister(); });
         }).catch(function () {});
       }
     } catch (e) {}
@@ -27,6 +28,6 @@
 </script>
 </head>
 <body>
-<p>Lounge Remote has moved to <a href="/lounge/app/">cheungeric02.github.io/lounge/app/</a></p>
+<p>Lounge Remote has moved to <a href="/lounge-remote/">cheungeric02.github.io/lounge-remote/</a></p>
 </body>
 </html>
