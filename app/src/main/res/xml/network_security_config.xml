@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  v5: cleartext HTTP is allowed only because Sony Bravia IP control on the LAN
+  (http://<tv-ip>/sony/...) has no TLS. Every other endpoint Lounge talks to
+  (Firebase, Open-Meteo, GitHub Pages updates) is hard-coded https.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

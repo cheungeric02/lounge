@@ -36,9 +36,21 @@ sealed interface RemoteCommand {
     data class Text(val text: String) : RemoteCommand
     data object Submit : RemoteCommand
 
+    // ---- v5 ----
+    enum class PowerAction { Toggle, On, Off }
+    enum class KeyName { Up, Down, Left, Right, Ok, Back, Home }
+
+    data class Power(val action: PowerAction) : RemoteCommand
+    /** HDMI port 1..4 (Bravia only). */
+    data class Input(val port: Int) : RemoteCommand
+    data class Key(val key: KeyName) : RemoteCommand
+
     companion object {
         /** Commands older/newer than this (vs estimated server time) are dropped. */
         const val FRESH_WINDOW_MS = 30_000L
+
+        /** v5: D-pad `key` commands use this stricter window so a laggy link never replays a burst. */
+        const val KEY_FRESH_MS = 3_000L
 
         private val PKG = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$")
 
@@ -75,6 +87,23 @@ sealed interface RemoteCommand {
                 "open" -> obj.stringField("url")?.trim()?.takeIf(LinkRouter::isAcceptable)?.let(::Open)
                 "text" -> obj.stringField("text")?.takeIf { it.length <= TvInput.MAX_TEXT }?.let(::Text)
                 "submit" -> Submit
+                "power" -> when (obj.stringField("action")) {
+                    "toggle" -> Power(PowerAction.Toggle)
+                    "on" -> Power(PowerAction.On)
+                    "off" -> Power(PowerAction.Off)
+                    else -> null
+                }
+                "input" -> obj.longField("port")?.takeIf { it in 1L..4L }?.let { Input(it.toInt()) }
+                "key" -> when (obj.stringField("key")) {
+                    "up" -> Key(KeyName.Up)
+                    "down" -> Key(KeyName.Down)
+                    "left" -> Key(KeyName.Left)
+                    "right" -> Key(KeyName.Right)
+                    "ok" -> Key(KeyName.Ok)
+                    "back" -> Key(KeyName.Back)
+                    "home" -> Key(KeyName.Home)
+                    else -> null
+                }
                 else -> null
             }
         }
@@ -113,7 +142,9 @@ sealed interface RemoteCommand {
         fun parseFresh(element: JsonElement?, serverNow: Long): RemoteCommand? {
             val at = atOf(element) ?: return null
             if (!isFresh(at, serverNow)) return null
-            return parse(element)
+            val cmd = parse(element) ?: return null
+            if (cmd is Key && abs(serverNow - at) > KEY_FRESH_MS) return null
+            return cmd
         }
 
         /** RTDB keys can't contain '.', so `com.netflix.ninja` → `com,netflix,ninja`. */

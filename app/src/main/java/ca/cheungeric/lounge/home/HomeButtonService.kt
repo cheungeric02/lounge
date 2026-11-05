@@ -19,6 +19,7 @@ import ca.cheungeric.lounge.LoungeApp
 import ca.cheungeric.lounge.MainActivity
 import ca.cheungeric.lounge.remote.InputSnapshot
 import ca.cheungeric.lounge.remote.ProfilePicker
+import ca.cheungeric.lounge.remote.RemoteCommand
 import ca.cheungeric.lounge.remote.TvInput
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -346,6 +347,41 @@ class HomeButtonService : AccessibilityService() {
                 // best-effort
             }
         }
+
+        /**
+         * v5 phone D-pad: Up/Down/Left/Right/Ok → GLOBAL_ACTION_DPAD_* (API 33+). Back/Home are
+         * handled by the bridge's existing paths, so they return false here. False below API 33
+         * or when the service isn't connected. Call on the main thread.
+         */
+        @JvmStatic
+        fun dpad(key: RemoteCommand.KeyName): Boolean {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
+            val action = when (key) {
+                RemoteCommand.KeyName.Up -> GLOBAL_ACTION_DPAD_UP
+                RemoteCommand.KeyName.Down -> GLOBAL_ACTION_DPAD_DOWN
+                RemoteCommand.KeyName.Left -> GLOBAL_ACTION_DPAD_LEFT
+                RemoteCommand.KeyName.Right -> GLOBAL_ACTION_DPAD_RIGHT
+                RemoteCommand.KeyName.Ok -> GLOBAL_ACTION_DPAD_CENTER
+                RemoteCommand.KeyName.Back, RemoteCommand.KeyName.Home -> return false
+            }
+            return try {
+                connected?.performGlobalAction(action) ?: false
+            } catch (t: Throwable) {
+                false
+            }
+        }
+
+        /** v5 Power fallback: puts the box to sleep (HDMI-CEC may then turn the TV off). Main thread. */
+        @JvmStatic
+        fun sleepBox(): Boolean = try {
+            connected?.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN) ?: false
+        } catch (t: Throwable) {
+            false
+        }
+
+        /** tv/status `keys`: D-pad commands work (service connected AND API 33+). */
+        @JvmStatic
+        fun isKeysSupported(): Boolean = connected != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
         /** True while the service is connected (tv/status `typing`). */
         @JvmStatic

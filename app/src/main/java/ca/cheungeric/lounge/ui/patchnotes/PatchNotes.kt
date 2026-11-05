@@ -1,7 +1,7 @@
 package ca.cheungeric.lounge.ui.patchnotes
 
 /** Integer build number. Single source of truth: Gradle reads this line for versionCode/versionName. */
-const val APP_VERSION = 4
+const val APP_VERSION = 5
 
 data class PatchNote(
     val v: Int,
@@ -12,6 +12,16 @@ data class PatchNote(
 
 /** Newest first. Add an entry every release and bump [APP_VERSION]. */
 val PATCH_NOTES = listOf(
+    PatchNote(
+        5,
+        "2026-11-05",
+        "TV power, phone remote and ambient screen",
+        listOf(
+            "Turn the TV on and off and switch HDMI inputs from your phone. Set it up in Settings → TV power control.",
+            "Lounge Remote has a new Remote tab with a D-pad, Back, Home and volume (D-pad needs Android 13+).",
+            "Ambient screen: after a few idle minutes on Home, the screen goes pure black with a dim clock and weather. Pick Off/5/10/30 min in Settings. Also available as the \"Lounge Ambient\" screensaver.",
+        ),
+    ),
     PatchNote(
         4,
         "2026-11-04",

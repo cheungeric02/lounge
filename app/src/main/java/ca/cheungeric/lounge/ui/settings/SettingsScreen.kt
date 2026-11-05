@@ -1,6 +1,10 @@
 package ca.cheungeric.lounge.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -25,6 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,9 +44,13 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import ca.cheungeric.lounge.R
 import ca.cheungeric.lounge.data.AppEntry
+import ca.cheungeric.lounge.remote.BraviaControl
+import ca.cheungeric.lounge.remote.BraviaRpc
 import ca.cheungeric.lounge.remote.RemoteKey
 import ca.cheungeric.lounge.remote.RemoteStatus
 import ca.cheungeric.lounge.remote.qr.QrCode
+import ca.cheungeric.lounge.ui.ambient.AmbientIdle
+import ca.cheungeric.lounge.ui.home.springFocus
 import ca.cheungeric.lounge.ui.patchnotes.PATCH_NOTES
 import ca.cheungeric.lounge.ui.patchnotes.PatchNotesList
 import ca.cheungeric.lounge.ui.theme.LoungeButton
@@ -44,7 +59,7 @@ import ca.cheungeric.lounge.ui.theme.LoungeShapes
 import ca.cheungeric.lounge.update.UpdateState
 
 /**
- * Settings: Home button, Phone remote, Updates, Hidden apps, Patch Notes, About. Stateless; the activity re-reads
+ * Settings: Home button, Phone remote, TV power control, Ambient screen, Updates, Hidden apps, Patch Notes, About. Stateless; the activity re-reads
  * [homeServiceEnabled] on resume. Initial focus goes to the first button.
  */
 @Composable
@@ -64,6 +79,13 @@ fun SettingsScreen(
     onRemoteNewKey: () -> Unit,
     mediaAccessGranted: Boolean,
     onOpenMediaAccess: () -> Unit,
+    braviaIp: String,
+    braviaPsk: String,
+    braviaTest: BraviaTestState,
+    onBraviaSave: (ip: String, psk: String) -> Unit,
+    onBraviaTest: (ip: String, psk: String) -> Unit,
+    ambientMinutes: Int,
+    onAmbientMinutes: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val firstButton = remember { FocusRequester() }
@@ -115,6 +137,28 @@ fun SettingsScreen(
                 mediaAccessGranted = mediaAccessGranted,
                 onOpenMediaAccess = onOpenMediaAccess,
             )
+        }
+
+        Section(stringResource(R.string.settings_tv_power)) {
+            TvPowerSection(braviaIp, braviaPsk, braviaTest, onBraviaSave, onBraviaTest)
+        }
+
+        Section(stringResource(R.string.settings_ambient)) {
+            Text(
+                stringResource(R.string.settings_ambient_desc),
+                style = MaterialTheme.typography.titleLarge,
+                color = LoungeColors.OnSurfaceVariant,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                AmbientIdle.OPTIONS.forEach { m ->
+                    LoungeButton(
+                        if (m == 0) stringResource(R.string.settings_ambient_off)
+                        else stringResource(R.string.settings_ambient_minutes, m),
+                        onClick = { onAmbientMinutes(m) },
+                        primary = m == ambientMinutes,
+                    )
+                }
+            }
         }
 
         Section(stringResource(R.string.settings_updates)) {
@@ -288,6 +332,118 @@ private fun PhoneRemoteSection(
             stringResource(R.string.settings_remote_new_key),
             onClick = { confirming = true },
             modifier = Modifier.focusRequester(newKeyButton),
+        )
+    }
+}
+
+/** v5 Settings → "TV power control" Test connection / Save feedback. */
+sealed interface BraviaTestState {
+    data object Idle : BraviaTestState
+    data object Saved : BraviaTestState
+    data object Testing : BraviaTestState
+    data class Done(val result: BraviaControl.Result) : BraviaTestState
+}
+
+/**
+ * TV power control: Bravia IP + Pre-Shared Key fields, Save, Test connection + result, setup steps.
+ * The key field is a plain (non-password) text field so the Lounge Remote phone keyboard can fill
+ * it; it is only shown masked while not focused.
+ */
+@Composable
+private fun TvPowerSection(
+    savedIp: String,
+    savedPsk: String,
+    test: BraviaTestState,
+    onSave: (ip: String, psk: String) -> Unit,
+    onTest: (ip: String, psk: String) -> Unit,
+) {
+    var ip by remember(savedIp) { mutableStateOf(savedIp) }
+    var psk by remember(savedPsk) { mutableStateOf(savedPsk) }
+
+    SettingsTextField(stringResource(R.string.settings_bravia_ip), ip, { ip = it }, KeyboardType.Uri, mask = false)
+    SettingsTextField(stringResource(R.string.settings_bravia_psk), psk, { psk = it }, KeyboardType.Ascii, mask = true)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        LoungeButton(stringResource(R.string.settings_bravia_save), onClick = { onSave(ip, psk) })
+        LoungeButton(
+            stringResource(R.string.settings_bravia_test),
+            onClick = { if (test != BraviaTestState.Testing) onTest(ip, psk) },
+            primary = true,
+        )
+    }
+    braviaTestText(test)?.let {
+        Text(it, style = MaterialTheme.typography.titleLarge, color = LoungeColors.OnSurface)
+    }
+    Text(
+        stringResource(R.string.settings_bravia_steps),
+        style = MaterialTheme.typography.titleMedium,
+        color = LoungeColors.OnSurfaceVariant,
+        modifier = Modifier.widthIn(max = 900.dp),
+    )
+    Text(
+        stringResource(R.string.settings_bravia_box_awake),
+        style = MaterialTheme.typography.titleMedium,
+        color = LoungeColors.OnSurfaceVariant,
+        modifier = Modifier.widthIn(max = 900.dp),
+    )
+}
+
+@Composable
+private fun braviaTestText(state: BraviaTestState): String? = when (state) {
+    BraviaTestState.Idle -> null
+    BraviaTestState.Saved -> stringResource(R.string.settings_bravia_saved)
+    BraviaTestState.Testing -> stringResource(R.string.settings_bravia_testing)
+    is BraviaTestState.Done -> when (val r = state.result) {
+        is BraviaControl.Result.Ok -> stringResource(
+            when (r.state) {
+                BraviaRpc.PowerState.On -> R.string.settings_bravia_on
+                BraviaRpc.PowerState.Standby -> R.string.settings_bravia_standby
+                else -> R.string.settings_bravia_connected
+            },
+        )
+        BraviaControl.Result.WrongKey -> stringResource(R.string.settings_bravia_wrong_key)
+        BraviaControl.Result.Unreachable -> stringResource(R.string.settings_bravia_unreachable)
+        BraviaControl.Result.NotConfigured -> stringResource(R.string.settings_bravia_not_configured)
+        is BraviaControl.Result.Error -> stringResource(R.string.settings_bravia_error, r.message)
+    }
+}
+
+/** Shows every character as a bullet without marking the field as a password (keeps phone typing working). */
+private object BulletMask : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText =
+        TransformedText(AnnotatedString("•".repeat(text.length)), OffsetMapping.Identity)
+}
+
+/** Labelled single-line text field with the shared spring focus ring; OK opens the keyboard. */
+@Composable
+private fun SettingsTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    keyboardType: KeyboardType,
+    mask: Boolean,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.titleMedium, color = LoungeColors.OnSurfaceVariant)
+        BasicTextField(
+            value = value,
+            onValueChange = { v -> onValueChange(v.filterNot { it == '\n' || it == '\r' }.take(128)) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.titleLarge.copy(color = LoungeColors.OnSurface),
+            cursorBrush = SolidColor(LoungeColors.Primary),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = keyboardType,
+                autoCorrectEnabled = false,
+                imeAction = ImeAction.Done,
+            ),
+            visualTransformation = if (mask && !focused && value.isNotEmpty()) BulletMask else VisualTransformation.None,
+            interactionSource = interaction,
+            modifier = Modifier
+                .widthIn(min = 420.dp, max = 560.dp)
+                .springFocus(focused, cornerRadius = LoungeShapes.Medium)
+                .background(LoungeColors.SurfaceVariant, LoungeShapes.MediumShape)
+                .padding(horizontal = 20.dp, vertical = 12.dp),
         )
     }
 }

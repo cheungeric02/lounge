@@ -1,11 +1,13 @@
 package ca.cheungeric.lounge
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -16,7 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -36,6 +40,8 @@ import ca.cheungeric.lounge.home.HomeServiceStatus
 import ca.cheungeric.lounge.home.MediaAccessStatus
 import ca.cheungeric.lounge.remote.MediaWatcher
 import ca.cheungeric.lounge.remote.NowPlaying
+import ca.cheungeric.lounge.ui.ambient.AmbientIdle
+import ca.cheungeric.lounge.ui.ambient.AmbientScreen
 import ca.cheungeric.lounge.ui.edit.TileAction
 import ca.cheungeric.lounge.ui.edit.TileActionSheet
 import ca.cheungeric.lounge.ui.home.HomeButtonTip
@@ -48,6 +54,7 @@ import ca.cheungeric.lounge.ui.patchnotes.PatchNote
 import ca.cheungeric.lounge.ui.patchnotes.WhatsNewDialog
 import ca.cheungeric.lounge.ui.patchnotes.WhatsNewStore
 import ca.cheungeric.lounge.ui.patchnotes.checkWhatsNew
+import ca.cheungeric.lounge.ui.settings.BraviaTestState
 import ca.cheungeric.lounge.ui.settings.SettingsScreen
 import ca.cheungeric.lounge.ui.settings.canInstall
 import ca.cheungeric.lounge.ui.settings.updateStatusText
@@ -57,7 +64,10 @@ import ca.cheungeric.lounge.ui.theme.LoungeTheme
 import ca.cheungeric.lounge.update.UpdateState
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 private enum class Screen { Home, Settings }
 
@@ -76,8 +86,18 @@ class MainActivity : ComponentActivity() {
     private var homeTipDismissed by mutableStateOf(true)
     /** Mirrors RemoteBridge.isEnabled (Settings → Phone remote). */
     private var remoteEnabled by mutableStateOf(false)
+    /** v5 Settings → TV power control: saved values + Save/Test feedback. */
+    private var braviaIp by mutableStateOf("")
+    private var braviaPsk by mutableStateOf("")
+    private var braviaTest by mutableStateOf<BraviaTestState>(BraviaTestState.Idle)
     /** versionCode the user chose "Later" for this session (UpdateManager.dismiss() keeps Available). */
     private var updateLaterFor by mutableStateOf<Int?>(null)
+    /** v5 ambient screen: idle minutes (0 = Off), overlay visibility, last key uptime. */
+    private var ambientMinutes by mutableIntStateOf(AmbientIdle.DEFAULT_MINUTES)
+    private var ambientShown by mutableStateOf(false)
+    private var lastInputAt = 0L
+    /** Keys whose DOWN dismissed the ambient screen: their repeats + UP are swallowed too. */
+    private val swallowKeys = HashSet<Int>()
 
     private val container: AppContainer get() = (application as LoungeApp).container
 
@@ -91,9 +111,36 @@ class MainActivity : ComponentActivity() {
         updates.start()
         val bridge = container.remoteBridge
         remoteEnabled = bridge.isEnabled
+        val bravia = container.braviaControl
+        braviaIp = bravia.ip
+        braviaPsk = bravia.psk
         homeTipDismissed = readTipDismissed()
         homeServiceEnabled = HomeServiceStatus.isEnabled(this)
         mediaAccessGranted = MediaAccessStatus.isGranted(this)
+        ambientMinutes = readAmbientMinutes()
+
+        // v5: idle → ambient overlay, only while resumed on plain Home (no Settings / sheet / dialog).
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                lastInputAt = SystemClock.uptimeMillis()
+                while (true) {
+                    val plainHome = screen == Screen.Home && sheetApp == null && whatsNew.isEmpty()
+                    when (val d = AmbientIdle.decide(ambientMinutes, lastInputAt, SystemClock.uptimeMillis(), plainHome)) {
+                        AmbientIdle.Decision.Off, AmbientIdle.Decision.Blocked -> {
+                            awaitIdleInputsChange(null)
+                            lastInputAt = SystemClock.uptimeMillis()
+                        }
+                        is AmbientIdle.Decision.Wait -> {
+                            if (awaitIdleInputsChange(d.millis)) lastInputAt = SystemClock.uptimeMillis()
+                        }
+                        AmbientIdle.Decision.Show -> {
+                            ambientShown = true
+                            snapshotFlow { ambientShown }.first { !it }
+                        }
+                    }
+                }
+            }
+        }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -166,6 +213,29 @@ class MainActivity : ComponentActivity() {
                                 onRemoteNewKey = bridge::regenerateKey,
                                 mediaAccessGranted = mediaAccessGranted,
                                 onOpenMediaAccess = { MediaAccessStatus.openSettings(this@MainActivity) },
+                                braviaIp = braviaIp,
+                                braviaPsk = braviaPsk,
+                                braviaTest = braviaTest,
+                                onBraviaSave = { ip, psk ->
+                                    bravia.save(ip, psk)
+                                    braviaIp = bravia.ip
+                                    braviaPsk = bravia.psk
+                                    braviaTest = BraviaTestState.Saved
+                                },
+                                onBraviaTest = { ip, psk ->
+                                    bravia.save(ip, psk)
+                                    braviaIp = bravia.ip
+                                    braviaPsk = bravia.psk
+                                    braviaTest = BraviaTestState.Testing
+                                    lifecycleScope.launch {
+                                        braviaTest = BraviaTestState.Done(bravia.test())
+                                    }
+                                },
+                                ambientMinutes = ambientMinutes,
+                                onAmbientMinutes = { m ->
+                                    ambientMinutes = AmbientIdle.normalize(m)
+                                    writeAmbientMinutes(ambientMinutes)
+                                },
                             )
                         }
                     }
@@ -186,6 +256,9 @@ class MainActivity : ComponentActivity() {
                                 .padding(horizontal = 24.dp, vertical = 12.dp),
                         )
                     }
+
+                    // Drawn over Home without taking focus, so the focused tile is kept for later.
+                    if (ambientShown) AmbientScreen(homeState.weather)
                 }
 
                 sheetApp?.let { app ->
@@ -273,6 +346,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        ambientShown = false
+        swallowKeys.clear()
         HomeButtonService.setLoungeResumed(false)
         super.onPause()
     }
@@ -282,11 +357,46 @@ class MainActivity : ComponentActivity() {
         val fromHome = intent.getBooleanExtra(HomeButtonService.EXTRA_FROM_HOME_BUTTON, false) ||
             intent.hasCategory(Intent.CATEGORY_HOME)
         if (fromHome) {
+            ambientShown = false
             screen = Screen.Home
             sheetApp = null
             whatsNew = emptyList()
         }
     }
+
+    /**
+     * Any key counts as activity; while the ambient screen shows, the key only dismisses it.
+     * RestrictedApi is a known false positive: androidx.core.app.ComponentActivity marks its
+     * dispatchKeyEvent override @RestrictTo, but this is the public Activity.dispatchKeyEvent.
+     */
+    @SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        lastInputAt = SystemClock.uptimeMillis()
+        if (ambientShown) {
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                ambientShown = false
+                swallowKeys.add(event.keyCode)
+            }
+            return true
+        }
+        if (event.keyCode in swallowKeys) {
+            if (event.action == KeyEvent.ACTION_UP) swallowKeys.remove(event.keyCode)
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    /**
+     * Suspends until the ambient setting, the screen or a sheet/dialog changes (true), or until
+     * [timeoutMs] passes (false). null = no timeout.
+     */
+    private suspend fun awaitIdleInputsChange(timeoutMs: Long?): Boolean =
+        withTimeoutOrNull(timeoutMs ?: Long.MAX_VALUE) {
+            snapshotFlow { Triple(ambientMinutes, screen, sheetApp != null || whatsNew.isNotEmpty()) }
+                .drop(1)
+                .first()
+            true
+        } ?: false
 
     private fun launchApp(app: AppEntry) {
         val launch = app.launchIntent
@@ -324,6 +434,23 @@ class MainActivity : ComponentActivity() {
         try {
             getSharedPreferences(WhatsNewStore.PREFS, Context.MODE_PRIVATE).edit()
                 .putBoolean(KEY_TIP_DISMISSED, true).apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun readAmbientMinutes(): Int = try {
+        AmbientIdle.normalize(
+            getSharedPreferences(WhatsNewStore.PREFS, Context.MODE_PRIVATE)
+                .getInt(AmbientIdle.PREF_KEY, AmbientIdle.DEFAULT_MINUTES),
+        )
+    } catch (_: Exception) {
+        AmbientIdle.DEFAULT_MINUTES
+    }
+
+    private fun writeAmbientMinutes(minutes: Int) {
+        try {
+            getSharedPreferences(WhatsNewStore.PREFS, Context.MODE_PRIVATE).edit()
+                .putInt(AmbientIdle.PREF_KEY, minutes).apply()
         } catch (_: Exception) {
         }
     }

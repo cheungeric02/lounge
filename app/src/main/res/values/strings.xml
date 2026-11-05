@@ -57,6 +57,23 @@
     <string name="settings_open_media_access">Open Notification access</string>
     <string name="settings_media_access_steps">On the TV: Settings → Apps → Special app access → Notification access → Lounge.</string>
     <string name="remote_cant_open_link">Can\'t open that link on this TV</string>
+    <!-- v5: TV power control (Bravia IP control) -->
+    <string name="settings_tv_power">TV power control</string>
+    <string name="settings_bravia_ip">Bravia IP address</string>
+    <string name="settings_bravia_psk">Pre-Shared Key</string>
+    <string name="settings_bravia_save">Save</string>
+    <string name="settings_bravia_saved">Saved</string>
+    <string name="settings_bravia_test">Test connection</string>
+    <string name="settings_bravia_testing">Testing…</string>
+    <string name="settings_bravia_on">Connected — TV is on</string>
+    <string name="settings_bravia_standby">Connected — TV is in standby</string>
+    <string name="settings_bravia_connected">Connected</string>
+    <string name="settings_bravia_wrong_key">Wrong key</string>
+    <string name="settings_bravia_unreachable">Can\'t reach the TV — check the IP and that Remote start is on</string>
+    <string name="settings_bravia_not_configured">Enter the Pre-Shared Key first</string>
+    <string name="settings_bravia_error">The TV returned an error: %1$s</string>
+    <string name="settings_bravia_steps">On the Bravia: Settings → Network → Home network → IP control → Authentication \"Normal and Pre-Shared Key\", set a Pre-Shared Key, and turn Remote start On. Enter the same key here.</string>
+    <string name="settings_bravia_box_awake">For Power On from your phone, the Google TV box must stay awake while the TV is off.</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_current_version">Current version: v%1$d</string>
     <string name="settings_check_updates">Check for updates</string>
@@ -74,4 +91,10 @@
     <string name="settings_about_version">Lounge v%1$d</string>
     <string name="settings_about_repo">https://github.com/cheungeric02/lounge</string>
     <string name="settings_about_tagline">Ad-free home screen for Android TV</string>
+    <!-- v5 ambient screen -->
+    <string name="ambient_dream_label">Lounge Ambient</string>
+    <string name="settings_ambient">Ambient screen</string>
+    <string name="settings_ambient_off">Off</string>
+    <string name="settings_ambient_minutes">%1$d min</string>
+    <string name="settings_ambient_desc">After Home sits idle, show a black screen with a dim clock and weather. Any button wakes it.</string>
 </resources>

@@ -15,11 +15,20 @@ import java.util.Base64
 object RemotePayloads {
 
     /** `tv/status`; lastSeen is the RTDB server-timestamp placeholder. */
-    fun status(appVersion: Int, homeService: Boolean, mediaAccess: Boolean, typing: Boolean): String = buildJsonObject {
+    fun status(
+        appVersion: Int,
+        homeService: Boolean,
+        mediaAccess: Boolean,
+        typing: Boolean,
+        keys: Boolean = false,
+        power: String = POWER_NONE,
+    ): String = buildJsonObject {
         put("appVersion", appVersion)
         put("homeService", homeService)
         put("mediaAccess", mediaAccess)
         put("typing", typing)
+        put("keys", keys)
+        put("power", power)
         put("lastSeen", buildJsonObject { put(".sv", "timestamp") })
     }.toString()
 
@@ -60,6 +69,14 @@ object RemotePayloads {
         put("max", max.coerceAtLeast(0))
         put("muted", muted)
     }.toString()
+
+    /** v5 `tv/status.power` values. */
+    const val POWER_BRAVIA = "bravia"
+    const val POWER_SLEEP = "sleep"
+    const val POWER_NONE = "none"
+
+    /** v5 `tv/power`: `{state: "on"|"standby"|"unknown"}`. */
+    fun power(state: String): String = buildJsonObject { put("state", state) }.toString()
 
     /** `tv/sleep` while armed: `{at: <server ms>}`. */
     fun sleep(at: Long): String = buildJsonObject { put("at", at) }.toString()

@@ -195,3 +195,26 @@ Same posture as v2: the phone only sends `cmd/*`, the TV publishes `tv/*`. All n
 ### TV Home v3
 - Small Now Playing pill/card in the Home header area when something is playing or paused (art thumb, title, app, state glyph). Not focusable-critical: D-pad order unchanged.
 - APP_VERSION 3 + patch note.
+
+## v5 — Power + TV controls, phone remote page, ambient screen (TV APP_VERSION 5, web 5)
+
+### Data contract additions (`lounge/<key>/…`)
+- `tv/status` gains `keys: Boolean` (D-pad commands work: HomeButtonService running AND SDK ≥ 33) and `power: "bravia"|"sleep"|"none"` — how Power works: `bravia` = Bravia IP control configured and the last call succeeded; `sleep` = no Bravia control, but the accessibility service can put the box to sleep (HDMI-CEC then turns the TV off; turning ON is impossible from the phone); `none` = neither.
+- `tv/power` — `{ state: "on"|"standby"|"unknown" }`, only while `power == "bravia"` (from Bravia `getPowerStatus`: `active` → on, `standby` → standby); republished after each power/input command and polled every 15 s while the bridge runs; deleted when Bravia control is not configured.
+- New `cmd` types (same freshness/delete-first rules as v2):
+  - `power` `{ action: "toggle"|"on"|"off" }`. Bravia configured → JSON-RPC `setPowerStatus` (toggle reads `getPowerStatus` first; `on` first sends a Wake-on-LAN magic packet if the Bravia MAC is known). Not configured → `off`/`toggle` = `performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)` (box sleeps), `on` = ignored.
+  - `input` `{ port: 1..4 }` — Bravia `setPlayContent` `extInput:hdmi?port=N` (Bravia only; ignored otherwise).
+  - `key` `{ key: "up"|"down"|"left"|"right"|"ok"|"back"|"home" }` — `GLOBAL_ACTION_DPAD_UP/DOWN/LEFT/RIGHT/CENTER` (API 33+), `back` = `GLOBAL_ACTION_BACK`, `home` = same as the `home` command. Key commands older than 3 s (vs estimated server time) are dropped so a laggy connection never replays a burst.
+
+### Bravia IP control (TV side)
+- Sony REST API over plain HTTP on the LAN: `POST http://<ip>/sony/system` / `/sony/avContent`, body `{"method","id","params":[…],"version":"1.0"}`, header `X-Auth-PSK: <key>`. Timeouts 3 s. Never log or publish the PSK.
+- TV Settings → "TV power control": Bravia IP (default `192.168.2.32`), Pre-Shared Key (plain text field so the phone keyboard can type into it), "Test connection" (shows "Connected — TV is on/standby", "Wrong key" on 401/403/error 40005, "Can't reach the TV" on timeout). Setup steps shown on screen: Bravia Settings → Network → Home network → IP control → Authentication "Normal and Pre-Shared Key", set a Pre-Shared Key, Remote start On. For Power On to work, the Google TV box must stay awake while the Bravia is off (box: turn off "HDMI-CEC → turn off with TV"/never sleep).
+- Cleartext HTTP needed for the LAN IP: `network_security_config.xml` allows cleartext (all other endpoints are hard-coded https).
+
+### Phone app v5
+- Bottom navigation bar with two destinations: **Apps** (the existing paired view) and **Remote** (new page). Remembered per phone (`lounge_remote_tab`).
+- Remote page mimics a physical remote (see brief); Power button also in the Apps page top bar.
+- `?demo=1` fake TV implements power/input/key, `tv/power`, `status.keys` and `status.power`.
+
+### Ambient screen (TV)
+- Pure black (#000) screen with only a dim clock and current weather; no animation, redraws once a minute; the block shifts position every minute (burn-in). Shown after N idle minutes on Lounge Home (Settings: Off / 5 / 10 / 30, default 10) and as a system screensaver (DreamService "Lounge Ambient"). Any key dismisses it (the key is consumed).

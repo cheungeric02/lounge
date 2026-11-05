@@ -1,5 +1,5 @@
 // Lounge Remote service worker. Cache number MUST equal APP_VERSION in index.html.
-const CACHE = 'lounge-remote-v4';
+const CACHE = 'lounge-remote-v5';
 const SHELL = ['./', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 

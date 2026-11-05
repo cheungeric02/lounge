@@ -26,6 +26,26 @@ class RemotePayloadsTest {
         assertEquals("false", o["mediaAccess"]!!.jsonPrimitive.content)
         assertEquals("true", o["typing"]!!.jsonPrimitive.content)
         assertEquals("timestamp", o["lastSeen"]!!.jsonObject[".sv"]!!.jsonPrimitive.content)
+        assertEquals("false", o["keys"]!!.jsonPrimitive.content)
+        assertEquals("none", o["power"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun status_v5KeysAndPower() {
+        val o = Json.parseToJsonElement(
+            RemotePayloads.status(5, true, true, true, keys = true, power = RemotePayloads.POWER_BRAVIA),
+        ).jsonObject
+        assertEquals("true", o["keys"]!!.jsonPrimitive.content)
+        assertEquals("bravia", o["power"]!!.jsonPrimitive.content)
+        val s = Json.parseToJsonElement(RemotePayloads.status(5, true, false, true, false, RemotePayloads.POWER_SLEEP)).jsonObject
+        assertEquals("sleep", s["power"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun power_payload() {
+        val o = Json.parseToJsonElement(RemotePayloads.power("standby")).jsonObject
+        assertEquals(setOf("state"), o.keys)
+        assertEquals("standby", o["state"]!!.jsonPrimitive.content)
     }
 
     @Test

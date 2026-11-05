@@ -45,6 +45,8 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
@@ -65,6 +67,7 @@ class RemoteBridge(
     context: Context,
     private val appsRepository: AppsRepository,
     private val layoutPrefs: LayoutPrefs,
+    private val bravia: BraviaControl,
     private val db: RemoteDb = FirebaseRest(),
 ) {
     private val app = context.applicationContext
@@ -201,6 +204,7 @@ class RemoteBridge(
         launch { volumeLoop(session) }
         launch { inputLoop(base) }
         launch { retrying("sleep rearm") { rearmSleep(session) } }
+        launch { powerLoop(session) }
     }
 
     /** Per-run state (a new key starts from an empty node). */
@@ -222,6 +226,12 @@ class RemoteBridge(
 
         @Volatile
         var sleepJob: Job? = null
+
+        // v5: power coroutine only (kicked by power/input commands).
+        val powerKick = Channel<Unit>(Channel.CONFLATED)
+        val powerMutex = Mutex()
+        /** Last tv/power JSON written; "" = known deleted; null = unknown (first pass deletes/writes). */
+        var lastPowerJson: String? = null
     }
 
     /** Writes tv/status at once when a field changes, else every 60 s (lastSeen heartbeat). */
@@ -234,6 +244,8 @@ class RemoteBridge(
                 HomeServiceStatus.isEnabled(app),
                 mediaAccess,
                 HomeButtonService.isRunning(),
+                keys = HomeButtonService.isKeysSupported(),
+                power = powerMode(),
             )
             val now = SystemClock.elapsedRealtime()
             if (json != last || now - lastAt >= STATUS_INTERVAL_MS) {
@@ -248,6 +260,95 @@ class RemoteBridge(
                 }
             }
             delay(STATUS_CHECK_MS)
+        }
+    }
+
+    // ---- v5: power ----
+
+    /** tv/status `power`: Bravia configured + last call OK → bravia; else box sleep via a11y → sleep; else none. */
+    private fun powerMode(): String = when {
+        bravia.isConfigured && bravia.lastOk -> RemotePayloads.POWER_BRAVIA
+        HomeButtonService.isRunning() -> RemotePayloads.POWER_SLEEP
+        else -> RemotePayloads.POWER_NONE
+    }
+
+    /**
+     * Polls Bravia power every 15 s (or right after a power/input command) and publishes tv/power
+     * while [powerMode] is bravia; deletes it otherwise.
+     */
+    private suspend fun powerLoop(s: Session) {
+        while (true) {
+            try {
+                val state = if (bravia.isConfigured) {
+                    (bravia.powerStatus() as? BraviaControl.Result.Ok)?.state
+                } else {
+                    null
+                }
+                if (bravia.isConfigured && bravia.lastOk) {
+                    val json = RemotePayloads.power((state ?: BraviaRpc.PowerState.Unknown).wire)
+                    if (json != s.lastPowerJson) {
+                        db.put("${s.base}/tv/power", json)
+                        s.lastPowerJson = json
+                    }
+                } else if (s.lastPowerJson != "") {
+                    db.delete("${s.base}/tv/power")
+                    s.lastPowerJson = ""
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                log("power", t)
+            }
+            withTimeoutOrNull(POWER_POLL_MS) { s.powerKick.receive() }
+        }
+    }
+
+    /** Runs a Bravia/power command on the run scope, one at a time, never failing the run. */
+    private fun tvControl(s: Session, what: String, block: suspend () -> Unit) {
+        s.scope.launch {
+            try {
+                s.powerMutex.withLock { block() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                log(what, t)
+            }
+        }
+    }
+
+    private suspend fun power(s: Session, action: RemoteCommand.PowerAction) {
+        if (!bravia.isConfigured) {
+            // No IP control: the box can sleep (CEC may turn the TV off); turning on is impossible.
+            if (action != RemoteCommand.PowerAction.On) {
+                withContext(Dispatchers.Main) { HomeButtonService.sleepBox() }
+            }
+            s.powerKick.trySend(Unit)
+            return
+        }
+        val r = when (action) {
+            RemoteCommand.PowerAction.Toggle -> bravia.toggle()
+            RemoteCommand.PowerAction.On -> bravia.setPower(true)
+            RemoteCommand.PowerAction.Off -> bravia.setPower(false)
+        }
+        if (r !is BraviaControl.Result.Ok) log("power ${action.name}", IllegalStateException(r.javaClass.simpleName))
+        delay(POWER_SETTLE_MS)
+        s.powerKick.trySend(Unit)
+    }
+
+    private suspend fun input(s: Session, port: Int) {
+        if (!bravia.isConfigured) return
+        val r = bravia.setInput(port)
+        if (r !is BraviaControl.Result.Ok) log("input", IllegalStateException(r.javaClass.simpleName))
+        s.powerKick.trySend(Unit)
+    }
+
+    private suspend fun key(k: RemoteCommand.KeyName) {
+        when (k) {
+            RemoteCommand.KeyName.Back -> withContext(Dispatchers.Main) { HomeButtonService.performBack() }
+            RemoteCommand.KeyName.Home -> withContext(Dispatchers.Main) {
+                app.startActivity(HomeButtonService.loungeIntent(app))
+            }
+            else -> withContext(Dispatchers.Main) { HomeButtonService.dpad(k) }
         }
     }
 
@@ -620,6 +721,10 @@ class RemoteBridge(
             is RemoteCommand.Open -> openLink(cmd.url)
             is RemoteCommand.Text -> withContext(Dispatchers.Main) { HomeButtonService.setText(cmd.text) }
             RemoteCommand.Submit -> withContext(Dispatchers.Main) { HomeButtonService.submit() }
+            // LAN calls can take seconds: run them off the command queue so D-pad keys never wait.
+            is RemoteCommand.Power -> tvControl(s, "power") { power(s, cmd.action) }
+            is RemoteCommand.Input -> tvControl(s, "input") { input(s, cmd.port) }
+            is RemoteCommand.Key -> key(cmd.key)
         }
     }
 
@@ -705,6 +810,8 @@ class RemoteBridge(
         private const val MEDIA_RETRY_MS = 10_000L
         private const val VOLUME_POLL_MS = 5_000L
         private const val VOLUME_SETTLE_MS = 150L
+        private const val POWER_POLL_MS = 15_000L
+        private const val POWER_SETTLE_MS = 1_000L
         private const val INPUT_DEBOUNCE_MS = 200L
         private const val SCREENSAVER_DELAY_MS = 800L
         private const val SYSTEMUI_PKG = "com.android.systemui"

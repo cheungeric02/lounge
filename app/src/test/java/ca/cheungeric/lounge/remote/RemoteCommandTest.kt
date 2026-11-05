@@ -200,4 +200,56 @@ class RemoteCommandTest {
         assertEquals(RemoteCommand.Launch(p, null), fresh("""{"type":"launch","pkg":"$p","profile":"   ","at":$now}"""))
         assertEquals(RemoteCommand.Launch(p, null), fresh("""{"type":"launch","pkg":"$p","profile":5,"at":$now}"""))
     }
+
+    // ---- v5 ----
+
+    @Test fun v5_everyType() {
+        assertEquals(RemoteCommand.Power(RemoteCommand.PowerAction.Toggle), fresh("""{"type":"power","action":"toggle","at":$now}"""))
+        assertEquals(RemoteCommand.Power(RemoteCommand.PowerAction.On), fresh("""{"type":"power","action":"on","at":$now}"""))
+        assertEquals(RemoteCommand.Power(RemoteCommand.PowerAction.Off), fresh("""{"type":"power","action":"off","at":$now}"""))
+        for (n in 1..4) assertEquals(RemoteCommand.Input(n), fresh("""{"type":"input","port":$n,"at":$now}"""))
+        val keys = mapOf(
+            "up" to RemoteCommand.KeyName.Up, "down" to RemoteCommand.KeyName.Down,
+            "left" to RemoteCommand.KeyName.Left, "right" to RemoteCommand.KeyName.Right,
+            "ok" to RemoteCommand.KeyName.Ok, "back" to RemoteCommand.KeyName.Back,
+            "home" to RemoteCommand.KeyName.Home,
+        )
+        for ((k, v) in keys) assertEquals(RemoteCommand.Key(v), fresh("""{"type":"key","key":"$k","at":$now}"""))
+    }
+
+    @Test fun power_invalid() {
+        assertNull(fresh("""{"type":"power","at":$now}"""))
+        assertNull(fresh("""{"type":"power","action":"reboot","at":$now}"""))
+        assertNull(fresh("""{"type":"power","action":1,"at":$now}"""))
+        assertNull(fresh("""{"type":"power","action":"ON","at":$now}"""))
+    }
+
+    @Test fun input_invalid() {
+        assertNull(fresh("""{"type":"input","at":$now}"""))
+        assertNull(fresh("""{"type":"input","port":0,"at":$now}"""))
+        assertNull(fresh("""{"type":"input","port":5,"at":$now}"""))
+        assertNull(fresh("""{"type":"input","port":"2","at":$now}"""))
+        assertNull(fresh("""{"type":"input","port":2.5,"at":$now}"""))
+        assertEquals(RemoteCommand.Input(2), fresh("""{"type":"input","port":2.0,"at":$now}"""))
+    }
+
+    @Test fun key_invalid() {
+        assertNull(fresh("""{"type":"key","at":$now}"""))
+        assertNull(fresh("""{"type":"key","key":"select","at":$now}"""))
+        assertNull(fresh("""{"type":"key","key":3,"at":$now}"""))
+    }
+
+    @Test fun key_strictFreshness() {
+        val up = RemoteCommand.Key(RemoteCommand.KeyName.Up)
+        assertEquals(up, fresh("""{"type":"key","key":"up","at":${now - 3_000}}"""))
+        assertEquals(up, fresh("""{"type":"key","key":"up","at":${now + 3_000}}"""))
+        assertNull(fresh("""{"type":"key","key":"up","at":${now - 3_001}}"""))
+        assertNull(fresh("""{"type":"key","key":"up","at":${now + 3_001}}"""))
+        assertNull(fresh("""{"type":"key","key":"up"}"""))
+        // Everything else keeps the 30 s window.
+        assertEquals(RemoteCommand.Power(RemoteCommand.PowerAction.On), fresh("""{"type":"power","action":"on","at":${now - 20_000}}"""))
+        assertEquals(RemoteCommand.Input(1), fresh("""{"type":"input","port":1,"at":${now - 20_000}}"""))
+        assertEquals(RemoteCommand.Home, fresh("""{"type":"home","at":${now - 20_000}}"""))
+        assertNull(fresh("""{"type":"power","action":"on","at":${now - 31_000}}"""))
+    }
 }
