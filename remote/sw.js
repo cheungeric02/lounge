@@ -1,5 +1,5 @@
 // Lounge Remote service worker. Cache number MUST equal APP_VERSION in index.html.
-const CACHE = 'lounge-remote-v5';
+const CACHE = 'lounge-app-v6';
 const SHELL = ['./', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 
@@ -12,7 +12,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys()
     .then((keys) => Promise.all(keys
-      .filter((k) => k.startsWith('lounge-remote-') && k !== CACHE)
+      .filter((k) => (k.startsWith('lounge-app-') || k.startsWith('lounge-remote-')) && k !== CACHE)
       .map((k) => caches.delete(k))))
     .then(() => self.clients.claim()));
 });

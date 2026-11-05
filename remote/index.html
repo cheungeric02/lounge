@@ -633,8 +633,12 @@ body.has-nav .snack { bottom: calc(96px + env(safe-area-inset-bottom)); }
 
 <script type="module">
 // ---------------------------------------------------------------- constants
-const APP_VERSION = 5; // MUST equal the sw.js cache number (lounge-remote-v5)
+const APP_VERSION = 6; // MUST equal the sw.js cache number (lounge-app-v6)
 const PATCH_NOTES = [
+  { v: 6, date: '2026-11-05', title: 'New home for the phone app', items: [
+    'Lounge Remote moved to cheungeric02.github.io/lounge/app/ so "Add to Home screen" installs properly',
+    'Old links and pairing QR codes still work and forward you here',
+  ] },
   { v: 5, date: '2026-11-05', title: 'Remote page and TV power', items: [
     'New Remote tab: a full phone remote with a D-pad, Back, Home, play/pause and volume',
     'Power button turns the TV on and off (set up TV power control in Lounge Settings first)',

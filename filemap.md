@@ -9,12 +9,13 @@
 - `gradle/libs.versions.toml` — version catalog (all dependency + plugin versions)
 - `gradle/wrapper/`, `gradlew`, `gradlew.bat` — Gradle 8.11.1 wrapper
 - `local.properties` — `sdk.dir` (gitignored, per machine)
-- `.github/workflows/release.yml` — CI: test + lint + assembleRelease (uses runner's preinstalled SDK, no setup-android); on main also signs, cross-checks APK versionCode == APP_VERSION, builds `site/` (lounge.apk, version.json via jq, index.html from template, sha256 self-check, copies `remote/` to `site/remote/`) and deploys Pages
-- `remote/` — Lounge Remote phone web app (CI copies it to `site/remote/` → `/lounge/remote/`):
+- `.github/workflows/release.yml` — CI: test + lint + assembleRelease (uses runner's preinstalled SDK, no setup-android); on main also signs, cross-checks APK versionCode == APP_VERSION, builds `site/` (lounge.apk, version.json via jq, index.html from template, sha256 self-check, copies `remote/` to `site/app/` + `.github/pages/remote-redirect/` to `site/remote/`) and deploys Pages
+- `remote/` — Lounge Remote phone web app (CI copies it to `site/app/` → `/lounge/app/`; moved from `/lounge/remote/` in web v6 because Android kept a phantom install there):
   - `index.html` — single-file app (inline CSS + JS module): pairing (#k= / typed key), Firebase adapter (tv/* read, cmd/* push), `?demo=1` in-memory fake TV, favorites drag-reorder, all-apps grid + search, hidden, theme toggle, APP_VERSION + PATCH_NOTES + What's New gate; v3: Now Playing card (tv/nowPlaying + tv/art, live position extrapolation, transport), volume row (tv/volume), Sleep/Type/Send link chips + bottom sheets (sleep, keyboard auto-open from tv/input, send link), share-target param handling, demo fake media/volume/sleep/text box; v4: "Whose phone is this?" profile (⋮ → This phone, localStorage lounge_remote_profile) sent as `profile` on launch; v5: bottom navbar Apps | Remote (localStorage lounge_remote_tab), Remote page (power, Input HDMI 1–4 sheet, D-pad with hold-repeat, Back/Home/Play-pause, volume rocker), #topPower on Apps tab, demo fake tv/power
-  - `manifest.webmanifest` — PWA manifest (scope/start_url `/lounge/remote/`, `share_target` GET title/text/url → `/lounge/remote/`)
-  - `sw.js` — service worker, cache `lounge-remote-vN` (N = APP_VERSION); network-first index.html, cache-first icons, never Firebase
+  - `manifest.webmanifest` — PWA manifest (id/scope/start_url `/lounge/app/`, `share_target` GET title/text/url → `/lounge/app/`)
+  - `sw.js` — service worker, cache `lounge-app-vN` (N = APP_VERSION; also deletes old `lounge-remote-*`); network-first index.html, cache-first icons, never Firebase
   - `icons/` — icon-192.png, icon-512.png, icon-maskable-512.png
+- `.github/pages/remote-redirect/` — old `/lounge/remote/` path: `index.html` forwards to `/lounge/app/` keeping ?query + #k= hash and unregisters the old SW; `sw.js` kill-switch SW
 - `.claude/launch.json` — local preview server for `remote/` (port 5180)
 - `.github/pages/index.template.html` — Pages download page template (@VC@, @SHA@, @SIZE_MB@ filled by CI)
 - `app/build.gradle.kts` — app module: SDK levels, versionCode from APP_VERSION regex, release signing (keystore.properties or LOUNGE_* env)

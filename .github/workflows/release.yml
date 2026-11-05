@@ -93,10 +93,12 @@ jobs:
           # Self-check: version.json's hash matches the APK being uploaded.
           echo "$(jq -r .sha256 site/version.json)  site/lounge.apk" | sha256sum -c -
 
-          # Lounge Remote phone web app → https://cheungeric02.github.io/lounge/remote/
+          # Lounge Remote phone web app → https://cheungeric02.github.io/lounge/app/
+          # (moved from /lounge/remote/ in web v6; that path now only redirects + kills the old SW)
           test -f remote/index.html
-          mkdir -p site/remote
-          cp -R remote/. site/remote/
+          mkdir -p site/app site/remote
+          cp -R remote/. site/app/
+          cp .github/pages/remote-redirect/index.html .github/pages/remote-redirect/sw.js site/remote/
           touch site/.nojekyll
           cat site/version.json
 
