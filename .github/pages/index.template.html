@@ -30,6 +30,11 @@
     }
     .btn:focus, .btn:hover { border-color: var(--focus); box-shadow: 0 0 0 4px var(--primary-container); }
     .size { color: var(--tertiary); font-size: 16px; margin: 10px 0 0; }
+    .phone { background: var(--primary-container); border-color: var(--primary); }
+    .phone p { margin: 0; }
+    .phone .btn { margin-top: 16px; }
+    .btn.secondary { background: transparent; color: var(--primary); border-color: var(--outline); font-size: 20px; padding: 16px 24px; }
+    .hidden { display: none; }
     section {
       background: var(--surface); border: 1px solid var(--outline); border-radius: 20px;
       padding: 20px 24px; margin: 32px 0 0;
@@ -48,8 +53,14 @@
     <p class="ver">Version @VC@</p>
     <p class="lede">A clean custom home screen for Android TV.</p>
 
-    <a class="btn" href="lounge.apk" download autofocus>Download Lounge v@VC@</a>
-    <p class="size">lounge.apk &middot; @SIZE_MB@ MB</p>
+    <section id="phone" class="phone hidden">
+      <h2>On your phone?</h2>
+      <p>This download is the <strong>TV</strong> app. It won't open on a phone. For the phone remote, install <strong>Lounge Remote</strong>: open it, then Chrome &#8942; &rarr; <strong>Add to Home screen</strong> &rarr; <strong>Install</strong>.</p>
+      <a class="btn" href="https://cheungeric02.github.io/lounge-remote/">Open Lounge Remote</a>
+    </section>
+
+    <a id="apk" class="btn" href="lounge.apk" download autofocus>Download Lounge v@VC@</a>
+    <p class="size">lounge.apk &middot; @SIZE_MB@ MB &middot; for Android TV / Google TV only</p>
 
     <section>
       <h2>Install on your TV</h2>
@@ -72,5 +83,22 @@
 
     <p class="sha">SHA-256: <code>@SHA@</code></p>
   </main>
+  <script>
+    // Phones ("Mobile" in the UA, or Android + touchscreen for an unfolded Fold; TV boxes and the TV
+    // Downloader app have neither) get pointed at the phone remote first: installing the TV APK on a
+    // phone leaves an app with no icon that cannot be opened.
+    (function () {
+      var ua = navigator.userAgent || '';
+      var touch = (navigator.maxTouchPoints || 0) > 0;
+      if ((/Mobile|iPhone|iPad/i.test(ua) || (/Android/i.test(ua) && touch)) &&
+          !/TV|AFT|BRAVIA|GoogleTV|Chromecast/i.test(ua)) {
+        document.getElementById('phone').classList.remove('hidden');
+        var apk = document.getElementById('apk');
+        apk.classList.add('secondary');
+        apk.removeAttribute('autofocus');
+        apk.textContent = 'Download the TV app anyway';
+      }
+    })();
+  </script>
 </body>
 </html>
