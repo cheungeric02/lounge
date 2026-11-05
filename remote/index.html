@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lounge Remote</title>
+<meta name="description" content="Phone remote for the Lounge TV home screen.">
+<meta name="theme-color" content="#141218">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script>
+  // Anti-flash: apply the saved (or system) theme before first paint.
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('lounge_remote_theme'); } catch (e) {}
+    if (t !== 'light' && t !== 'dark') {
+      t = (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+    var m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute('content', t === 'light' ? '#FEF7FF' : '#141218');
+  })();
+</script>
+<style>
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141218;
+  --surface-1: #1D1B20;
+  --surface-2: #211F26;
+  --surface-3: #2B2930;
+  --surface-4: #36343B;
+  --on: #E6E0E9;
+  --on-var: #CAC4D0;
+  --outline: #938F99;
+  --outline-var: #49454F;
+  --primary: #D9C2FF;
+  --on-primary: #3B2470;
+  --pc: #523A88;
+  --on-pc: #EBDDFF;
+  --sc: #4A4458;
+  --on-sc: #E8DEF8;
+  --error: #FFB4AB;
+  --ok: #8BD8A0;
+  --warn: #F2C46D;
+  --scrim: rgba(0,0,0,.55);
+  --inverse: #E6E0E9;
+  --on-inverse: #322F35;
+  --shadow: 0 6px 24px rgba(0,0,0,.45);
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #FEF7FF;
+  --surface-1: #F7F2FA;
+  --surface-2: #F3EDF7;
+  --surface-3: #ECE6F0;
+  --surface-4: #E6E0E9;
+  --on: #1D1B20;
+  --on-var: #49454F;
+  --outline: #79747E;
+  --outline-var: #CAC4D0;
+  --primary: #6B4FA8;
+  --on-primary: #FFFFFF;
+  --pc: #EBDDFF;
+  --on-pc: #25005A;
+  --sc: #E8DEF8;
+  --on-sc: #1D192B;
+  --error: #BA1A1A;
+  --ok: #1E6B3A;
+  --warn: #7A5900;
+  --scrim: rgba(0,0,0,.35);
+  --inverse: #322F35;
+  --on-inverse: #F5EFF7;
+  --shadow: 0 6px 24px rgba(40,20,80,.18);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh; min-height: 100dvh;
+  background: var(--bg); color: var(--on);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Google Sans", sans-serif;
+  font-size: 15px; line-height: 1.4; font-weight: 400;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; padding: 0; }
+svg { display: block; }
+[hidden] { display: none !important; }
+
+.press { transition: transform .35s cubic-bezier(.34,1.56,.64,1), background-color .2s; }
+.press:active { transform: scale(.94); transition-duration: .12s; }
+
+/* Top bar */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 8px;
+  padding: calc(8px + env(safe-area-inset-top)) 12px 8px 20px;
+  background: var(--bg);
+}
+.topbar h1 { font-size: 22px; font-weight: 500; margin: 0; flex: 1; letter-spacing: .2px; }
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 22px;
+  display: grid; place-items: center; color: var(--on-var); flex: none;
+}
+.icon-btn:hover { background: var(--surface-3); }
+.icon-btn svg { width: 24px; height: 24px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 12px; border-radius: 16px;
+  background: var(--surface-3); color: var(--on-var);
+  font-size: 13px; font-weight: 500; white-space: nowrap;
+}
+.chip .dot { width: 8px; height: 8px; border-radius: 4px; background: var(--outline); }
+.chip.online { background: color-mix(in srgb, var(--ok) 18%, var(--surface-2)); color: var(--ok); }
+.chip.online .dot { background: var(--ok); }
+.chip.offline .dot { background: var(--warn); }
+
+main { padding: 4px 16px calc(96px + env(safe-area-inset-bottom)); max-width: 1200px; margin: 0 auto; }
+
+/* Pairing */
+.pair-wrap { min-height: calc(100dvh - 160px); display: grid; place-items: center; }
+.card {
+  background: var(--surface-2); border-radius: 20px; padding: 28px 22px;
+  width: 100%; max-width: 440px;
+}
+.pair-card { text-align: center; }
+.hero-icon {
+  width: 72px; height: 72px; border-radius: 24px; margin: 0 auto 16px;
+  background: var(--pc); color: var(--on-pc); display: grid; place-items: center;
+}
+.hero-icon svg { width: 38px; height: 38px; }
+.pair-card h2 { font-size: 24px; font-weight: 400; margin: 0 0 8px; }
+.helper { color: var(--on-var); margin: 0 0 24px; }
+.field { text-align: left; }
+.field label { display: block; font-size: 13px; font-weight: 500; color: var(--on-var); margin: 0 0 6px 4px; }
+.text-input {
+  width: 100%; height: 52px; padding: 0 16px; border-radius: 16px;
+  background: var(--surface-4); border: 2px solid transparent; outline: none;
+  font-size: 16px;
+}
+.text-input::placeholder { color: var(--outline); }
+.text-input:focus { border-color: var(--primary); }
+.text-input.invalid { border-color: var(--error); }
+.err { color: var(--error); font-size: 13px; margin: 8px 4px 0; text-align: left; }
+.btn-filled {
+  height: 48px; padding: 0 28px; border-radius: 24px; margin-top: 20px; width: 100%;
+  background: var(--primary); color: var(--on-primary); font-weight: 500; font-size: 15px;
+}
+.btn-tonal {
+  height: 40px; padding: 0 18px; border-radius: 20px;
+  background: var(--sc); color: var(--on-sc); font-weight: 500;
+}
+.btn-text { height: 40px; padding: 0 16px; border-radius: 20px; color: var(--primary); font-weight: 500; }
+.btn-text:hover { background: var(--surface-3); }
+
+/* Paired layout */
+.cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.col { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+@media (min-width: 700px) {
+  .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  main { padding-left: 24px; padding-right: 24px; }
+}
+.strip { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pill {
+  height: 64px; border-radius: 32px; background: var(--pc); color: var(--on-pc);
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: 16px; font-weight: 500;
+}
+.pill svg { width: 24px; height: 24px; }
+.sec h2 { font-size: 15px; font-weight: 500; margin: 0 0 10px 4px; color: var(--on); }
+.sec h2 .sub { color: var(--on-var); font-weight: 400; }
+.muted { color: var(--on-var); font-size: 14px; margin: 4px 4px; }
+
+/* Favorites list */
+.fav-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.row {
+  display: flex; align-items: center; gap: 4px; min-height: 60px;
+  background: var(--surface-2); border-radius: 18px; padding: 6px 4px 6px 4px;
+  position: relative; user-select: none; -webkit-user-select: none;
+  transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .2s, background-color .2s;
+}
+.row.dragging { transition: none; z-index: 5; background: var(--surface-4); box-shadow: var(--shadow); }
+.row.dragging.settle { transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+.handle {
+  width: 40px; height: 48px; display: grid; place-items: center; color: var(--outline);
+  touch-action: none; cursor: grab; flex: none; border-radius: 14px;
+}
+.handle:active { cursor: grabbing; }
+.handle svg { width: 22px; height: 22px; }
+.row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; height: 48px; text-align: left; border-radius: 14px; padding-right: 4px; }
+.row-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
+.art-sm { width: 64px; height: 36px; flex: none; border-radius: 8px; overflow: hidden; background: var(--surface-4); display: grid; place-items: center; }
+.art-sm { position: relative; }
+.art-sm img, .tile-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+.letter { width: 100%; height: 100%; display: grid; place-items: center; background: var(--pc); color: var(--on-pc); font-weight: 500; }
+.art-sm .letter { font-size: 16px; }
+
+/* Search + grid */
+.search {
+  display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 16px; border-radius: 24px;
+  background: var(--surface-3); color: var(--on-var); margin-bottom: 14px;
+}
+.search svg { width: 22px; height: 22px; flex: none; }
+.search input { flex: 1; min-width: 0; border: 0; outline: none; background: none; height: 100%; font-size: 15px; color: var(--on); }
+.search input::placeholder { color: var(--on-var); }
+.search:focus-within { outline: 2px solid var(--primary); }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 8px; }
+@media (min-width: 700px) { .grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.tile {
+  position: relative; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: pointer;
+  border-radius: 14px; outline: none;
+}
+.tile:focus-visible .tile-art { outline: 2px solid var(--primary); outline-offset: 2px; }
+.tile-art {
+  aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden; background: var(--surface-3);
+  display: grid; place-items: center; position: relative;
+}
+.tile-art .letter { font-size: 22px; }
+.tile-label { font-size: 12px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--on-var); padding: 0 2px; }
+.tile-more {
+  position: absolute; top: 2px; right: 2px; width: 28px; height: 28px; border-radius: 14px;
+  display: grid; place-items: center; color: var(--on);
+  background: color-mix(in srgb, var(--surface-1) 70%, transparent);
+}
+.tile-more svg { width: 18px; height: 18px; }
+
+/* Hidden */
+.collapse-btn {
+  width: 100%; height: 52px; border-radius: 18px; background: var(--surface-2);
+  display: flex; align-items: center; justify-content: space-between; padding: 0 16px 0 20px;
+  font-weight: 500;
+}
+.collapse-btn svg { width: 24px; height: 24px; color: var(--on-var); transition: transform .3s cubic-bezier(.34,1.56,.64,1); }
+.collapse-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.hidden-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.hidden-list .row { padding: 6px 8px 6px 12px; gap: 12px; }
+
+/* Spinner */
+.spin {
+  width: 18px; height: 18px; border-radius: 50%; flex: none;
+  border: 2px solid color-mix(in srgb, var(--primary) 30%, transparent); border-top-color: var(--primary);
+  animation: spin .8s linear infinite;
+}
+.tile-art .spin { position: absolute; bottom: 6px; left: 6px; background: var(--surface-1); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty / loading */
+.empty { text-align: center; max-width: 420px; margin: 48px auto 0; }
+.empty .hero-icon { margin-bottom: 16px; }
+.empty h2 { font-size: 20px; font-weight: 400; margin: 0 0 8px; }
+.empty p { color: var(--on-var); margin: 0; }
+.loading { display: flex; justify-content: center; align-items: center; gap: 12px; color: var(--on-var); margin-top: 64px; }
+
+/* Menu */
+.menu {
+  position: fixed; z-index: 50; min-width: 200px; max-width: calc(100vw - 32px);
+  background: var(--surface-3); border-radius: 16px; padding: 6px 0; box-shadow: var(--shadow);
+  opacity: 0; transform: scale(.92); transform-origin: top right; pointer-events: none;
+  transition: opacity .15s, transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.menu.open { opacity: 1; transform: none; pointer-events: auto; }
+.menu button { display: block; width: 100%; text-align: left; padding: 0 18px; height: 48px; font-size: 15px; }
+.menu button:hover, .menu button:focus-visible { background: var(--surface-4); outline: none; }
+.menu button.danger { color: var(--error); }
+
+/* Snackbar */
+.snack {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 60;
+  transform: translate(-50%, 24px); opacity: 0; pointer-events: none;
+  max-width: min(560px, calc(100vw - 32px)); width: max-content;
+  background: var(--inverse); color: var(--on-inverse); border-radius: 14px; padding: 14px 18px;
+  font-size: 14px; box-shadow: var(--shadow);
+  transition: opacity .2s, transform .35s cubic-bezier(.34,1.56,.64,1);
+}
+.snack.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* Dialog */
+dialog.dlg {
+  border: 0; padding: 0; border-radius: 28px; background: var(--surface-2); color: var(--on);
+  width: min(440px, calc(100vw - 32px)); max-height: min(640px, calc(100dvh - 48px));
+}
+dialog.dlg[open] { display: flex; flex-direction: column; animation: pop .3s cubic-bezier(.34,1.56,.64,1); }
+dialog.dlg::backdrop { background: var(--scrim); }
+@keyframes pop { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.dlg-head { padding: 24px 24px 8px; }
+.dlg-head h2 { font-size: 22px; font-weight: 400; margin: 0; }
+.dlg-head p { margin: 6px 0 0; color: var(--on-var); font-size: 14px; }
+.dlg-body { padding: 8px 24px; overflow-y: auto; }
+.dlg-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px 16px; }
+
+/* Patch notes (shared renderer) */
+.pn-entry { background: var(--surface-3); border-radius: 18px; padding: 14px 16px; margin-bottom: 10px; }
+.pn-entry.pn-current { background: var(--pc); color: var(--on-pc); }
+.pn-head { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.pn-v { font-weight: 500; }
+.pn-date { opacity: .75; }
+.pn-entry h3 { font-size: 16px; font-weight: 500; margin: 4px 0 6px; }
+.pn-entry ul { margin: 0; padding-left: 20px; }
+.pn-entry li { margin: 3px 0; font-size: 14px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <h1>Lounge</h1>
+  <span id="chip" class="chip" hidden role="status"><span class="dot"></span><span id="chipText">Waiting for TV</span></span>
+  <button id="themeBtn" class="icon-btn press" type="button" aria-label="Switch theme"></button>
+  <button id="menuBtn" class="icon-btn press" type="button" aria-label="More options" aria-haspopup="menu" hidden></button>
+</header>
+
+<main>
+  <section id="pairView" class="pair-wrap" hidden>
+    <form id="pairForm" class="card pair-card" novalidate autocomplete="off">
+      <div class="hero-icon" data-icon="tv"></div>
+      <h2>Pair with your TV</h2>
+      <p class="helper">On the TV: Lounge → Settings → Phone remote, then scan the QR code.</p>
+      <div class="field">
+        <label for="keyInput">Pairing key</label>
+        <input id="keyInput" class="text-input" type="text" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="maple-otter-river-cloud" aria-describedby="keyErr">
+        <p id="keyErr" class="err" hidden>That key doesn't look right. It's four words joined by dashes.</p>
+      </div>
+      <button class="btn-filled press" type="submit">Pair</button>
+    </form>
+  </section>
+
+  <section id="remoteView" hidden>
+    <div id="loading" class="loading"><span class="spin"></span><span>Connecting to your TV…</span></div>
+    <div id="emptyState" class="empty" hidden>
+      <div class="hero-icon" data-icon="tv"></div>
+      <h2>Waiting for your TV to share its apps</h2>
+      <p>On the TV, open Lounge → Settings → Phone remote and make sure it's turned on.</p>
+    </div>
+    <div id="content" class="cols" hidden>
+      <div class="col">
+        <div class="strip">
+          <button id="homeBtn" class="pill press" type="button"><span data-icon="home"></span>Home</button>
+          <button id="backBtn" class="pill press" type="button"><span data-icon="back"></span>Back</button>
+        </div>
+        <section class="sec" aria-labelledby="favH">
+          <h2 id="favH">Favorites <span class="sub">· drag to reorder</span></h2>
+          <ul id="favList" class="fav-list"></ul>
+          <p id="favEmpty" class="muted" hidden>No favorites yet. Add some from All apps.</p>
+        </section>
+      </div>
+      <div class="col">
+        <section class="sec" aria-labelledby="allH">
+          <h2 id="allH">All apps</h2>
+          <label class="search"><span data-icon="search"></span><input id="searchInput" type="search" placeholder="Search apps" aria-label="Search apps" autocomplete="off"></label>
+          <div id="grid" class="grid"></div>
+          <p id="gridEmpty" class="muted" hidden></p>
+        </section>
+        <section class="sec" id="hiddenSec">
+          <button id="hiddenToggle" class="collapse-btn press" type="button" aria-expanded="false" aria-controls="hiddenList"><span id="hiddenTitle">Hidden (0)</span><span data-icon="expand"></span></button>
+          <ul id="hiddenList" class="hidden-list" hidden></ul>
+        </section>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="menu" class="menu" role="menu" aria-hidden="true"></div>
+<div id="snack" class="snack" role="status" aria-live="polite"></div>
+<dialog id="dlg" class="dlg" aria-labelledby="dlgTitle">
+  <div class="dlg-head"><h2 id="dlgTitle"></h2><p id="dlgSub" hidden></p></div>
+  <div id="dlgBody" class="dlg-body"></div>
+  <div id="dlgActions" class="dlg-actions"></div>
+</dialog>
+
+<script type="module">
+// ---------------------------------------------------------------- constants
+const APP_VERSION = 1; // MUST equal the sw.js cache number (lounge-remote-v1)
+const PATCH_NOTES = [
+  { v: 1, date: '2026-11-04', title: 'Lounge Remote', items: [
+    'Pair with your TV by scanning its QR code or typing the four-word key',
+    'Launch apps and press Home or Back from your phone',
+    'Drag favorites to reorder them on the TV',
+    'Add or remove favorites, hide and unhide apps',
+    'Light and dark themes; works folded and unfolded',
+  ] },
+];
+const LS_KEY = 'lounge_remote_key';
+const LS_THEME = 'lounge_remote_theme';
+const LS_SEEN = 'lounge_remote_lastSeenVer';
+const KEY_RE = /^[a-z]+(-[a-z]+){3}$/;
+const ONLINE_MS = 150000;
+const PENDING_MS = 5000;
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyD9AJbPC9M4gpTyvfIoRcqILq0ZOom1OBs',
+  authDomain: 'bon-echo-bd946.firebaseapp.com',
+  databaseURL: 'https://bon-echo-bd946-default-rtdb.firebaseio.com',
+  projectId: 'bon-echo-bd946',
+  appId: '1:196437731482:web:3ac836962ce7d89e735723',
+};
+const SDK = 'https://www.gstatic.com/firebasejs/10.12.5/';
+const DEMO = new URLSearchParams(location.search).get('demo') === '1';
+
+// ---------------------------------------------------------------- helpers
+const $ = (id) => document.getElementById(id);
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const lsDel = (k) => { try { localStorage.removeItem(k); } catch (e) {} };
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pkgKey = (pkg) => pkg.replaceAll('.', ',');
+
+const ICONS = {
+  tv: '<path d="M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-6v1.5h3V21H7v-1.5h3V18H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm0 2v9h16V7H4Z"/>',
+  moon: '<path d="M12.3 2a8 8 0 1 0 9.7 9.7A7 7 0 0 1 12.3 2Z"/>',
+  sun: '<path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM11 1h2v3h-2V1Zm0 19h2v3h-2v-3ZM1 11h3v2H1v-2Zm19 0h3v2h-3v-2ZM4.2 2.8l2.1 2.1-1.4 1.4-2.1-2.1 1.4-1.4Zm13.5 13.5 2.1 2.1-1.4 1.4-2.1-2.1 1.4-1.4ZM2.8 19.8l2.1-2.1 1.4 1.4-2.1 2.1-1.4-1.4ZM16.3 6.3l2.1-2.1 1.4 1.4-2.1 2.1-1.4-1.4Z"/>',
+  more: '<path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/>',
+  home: '<path d="M12 3 3 10.5V21h6.5v-6h5v6H21V10.5L12 3Z"/>',
+  back: '<path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20v-2Z"/>',
+  search: '<path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5Zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9Z"/>',
+  expand: '<path d="M16.6 8.6 12 13.2 7.4 8.6 6 10l6 6 6-6-1.4-1.4Z"/>',
+  drag: '<path d="M9 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM9 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM9 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/>',
+};
+const icon = (name) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${ICONS[name]}</svg>`;
+function fillIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach((el) => { el.innerHTML = icon(el.dataset.icon); });
+}
+
+// Pairing key: bare key or a full pairing URL containing #k=<key>.
+function parseKey(input) {
+  let s = String(input || '').trim();
+  const m = s.match(/[#&?]k=([^&#\s]+)/);
+  if (m) s = m[1];
+  try { s = decodeURIComponent(s); } catch (e) {}
+  s = s.trim().toLowerCase();
+  return KEY_RE.test(s) ? s : null;
+}
+
+// RTDB drops empty arrays/objects and may return sparse arrays as objects: normalize at every read.
+function strArr(v) {
+  if (Array.isArray(v)) return v.filter((x) => typeof x === 'string');
+  if (v && typeof v === 'object') {
+    return Object.keys(v).sort((a, b) => Number(a) - Number(b)).map((k) => v[k]).filter((x) => typeof x === 'string');
+  }
+  return [];
+}
+function normLayout(v) {
+  const o = v && typeof v === 'object' ? v : {};
+  return { favorites: strArr(o.favorites), others: strArr(o.others), hidden: strArr(o.hidden) };
+}
+function normApps(v) {
+  const byPkg = {};
+  if (v && typeof v === 'object') {
+    for (const a of Object.values(v)) {
+      if (a && typeof a === 'object' && typeof a.pkg === 'string') {
+        byPkg[a.pkg] = { pkg: a.pkg, label: typeof a.label === 'string' && a.label ? a.label : a.pkg };
+      }
+    }
+  }
+  return byPkg;
+}
+function normIcons(v) {
+  const out = {};
+  if (v && typeof v === 'object') {
+    for (const [k, u] of Object.entries(v)) if (typeof u === 'string' && u.startsWith('data:image/')) out[k] = u;
+  }
+  return out;
+}
+function normStatus(v) {
+  if (!v || typeof v !== 'object' || typeof v.lastSeen !== 'number') return null;
+  return { lastSeen: v.lastSeen, appVersion: v.appVersion, homeService: !!v.homeService };
+}
+
+// ---------------------------------------------------------------- backends
+// Interface: subscribe({status, apps, layout, icons, offset, error}) -> unsubscribe(); send(cmd) -> Promise.
+let fb = null;
+async function createFirebaseBackend(key) {
+  if (!KEY_RE.test(key)) throw new Error('bad key');
+  if (!fb) {
+    const [appMod, dbMod] = await Promise.all([import(SDK + 'firebase-app.js'), import(SDK + 'firebase-database.js')]);
+    const app = appMod.getApps()[0] || appMod.initializeApp(FIREBASE_CONFIG);
+    fb = { ...dbMod, db: dbMod.getDatabase(app) };
+  }
+  const { db, ref, onValue, push, serverTimestamp } = fb;
+  const base = `lounge/${key}`;
+  return {
+    subscribe(h) {
+      const on = (path, cb) => onValue(ref(db, path), (s) => cb(s.val()), (err) => h.error && h.error(err));
+      const unsubs = [
+        on('.info/serverTimeOffset', (v) => h.offset(typeof v === 'number' ? v : 0)),
+        on(`${base}/tv/status`, h.status),
+        on(`${base}/tv/apps`, h.apps),
+        on(`${base}/tv/layout`, h.layout),
+        on(`${base}/tv/icons`, h.icons),
+      ];
+      return () => unsubs.forEach((u) => u());
+    },
+    send(cmd) {
+      const body = { type: cmd.type, at: serverTimestamp() };
+      if (cmd.pkg != null) body.pkg = cmd.pkg;
+      if (cmd.to != null) body.to = cmd.to;
+      return push(ref(db, `${base}/cmd`), body);
+    },
+  };
+}
+
+// In-memory fake TV for ?demo=1. Never loads Firebase.
+function createDemoBackend() {
+  const APPS = [
+    ['com.netflix.ninja', 'Netflix', '#E50914', 'banner'],
+    ['com.google.android.youtube.tv', 'YouTube', '#FF0033', 'banner'],
+    ['com.amazon.amazonvideo.livingroom', 'Prime Video', '#1A98FF', 'banner'],
+    ['com.disney.disneyplus', 'Disney+', '#0E2A6B', 'banner'],
+    ['com.plexapp.android', 'Plex', '#E5A00D', 'icon'],
+    ['com.spotify.tv.android', 'Spotify', '#1DB954', 'icon'],
+    ['ca.bellmedia.cravetv', 'Crave', '#0B57D0', 'none'],
+    ['com.stremio.one', 'Stremio', '#7B5BF5', 'banner'],
+    ['org.xbmc.kodi', 'Kodi', '#17B2E7', 'icon'],
+    ['tv.twitch.android.app', 'Twitch', '#9146FF', 'none'],
+    ['com.apple.atve.androidtv.appletv', 'Apple TV', '#222222', 'banner'],
+    ['com.android.tv.settings', 'Settings', '#5F6368', 'none'],
+    ['com.sony.dtv.sonyselect', 'Sony Select', '#333333', 'none'],
+  ];
+  const label = Object.fromEntries(APPS.map((a) => [a[0], a[1]]));
+  const byLabel = (a, b) => label[a].localeCompare(label[b]);
+  const apps = {};
+  for (const [pkg, l] of APPS) apps[pkgKey(pkg)] = { pkg, label: l, iconHash: 'demo' };
+  const icons = {};
+  for (const [pkg, l, color, kind] of APPS) {
+    if (kind === 'none') continue;
+    const c = document.createElement('canvas');
+    const banner = kind === 'banner';
+    c.width = banner ? 192 : 96; c.height = banner ? 108 : 96;
+    const g = c.getContext('2d');
+    g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = `500 ${banner ? 26 : 44}px system-ui, sans-serif`;
+    g.fillText(banner ? l : l[0], c.width / 2, c.height / 2);
+    icons[pkgKey(pkg)] = c.toDataURL('image/png');
+  }
+  const layout = {
+    favorites: ['com.netflix.ninja', 'com.google.android.youtube.tv', 'com.amazon.amazonvideo.livingroom', 'com.disney.disneyplus', 'com.plexapp.android'],
+    others: [],
+    hidden: ['com.sony.dtv.sonyselect'],
+  };
+  layout.others = APPS.map((a) => a[0]).filter((p) => !layout.favorites.includes(p) && !layout.hidden.includes(p)).sort(byLabel);
+  let online = true;
+  const status = () => ({ appVersion: 2, homeService: true, lastSeen: online ? Date.now() - 5000 : Date.now() - 200000 });
+  const subs = new Set();
+  // Publish like RTDB would: fresh objects, empty arrays dropped.
+  const wire = () => {
+    const o = {};
+    for (const k of ['favorites', 'others', 'hidden']) if (layout[k].length) o[k] = layout[k].slice();
+    return Object.keys(o).length ? o : null;
+  };
+  const publishLayout = () => subs.forEach((h) => h.layout(wire()));
+  const without = (p) => { for (const k of ['favorites', 'others', 'hidden']) layout[k] = layout[k].filter((x) => x !== p); };
+  function apply(cmd) {
+    const p = cmd.pkg;
+    if (p && !label[p]) return;
+    switch (cmd.type) {
+      case 'favorite': if (!layout.favorites.includes(p)) { without(p); layout.favorites.push(p); } break;
+      case 'unfavorite': if (layout.favorites.includes(p)) { without(p); layout.others.push(p); layout.others.sort(byLabel); } break;
+      case 'hide': without(p); layout.hidden.push(p); layout.hidden.sort(byLabel); break;
+      case 'unhide': if (layout.hidden.includes(p)) { without(p); layout.others.push(p); layout.others.sort(byLabel); } break;
+      case 'moveFavorite': {
+        const i = layout.favorites.indexOf(p); if (i < 0) return;
+        layout.favorites.splice(i, 1);
+        const to = Math.max(0, Math.min(layout.favorites.length, Number(cmd.to) || 0));
+        layout.favorites.splice(to, 0, p);
+        break;
+      }
+      default: return; // launch / home / back: nothing to republish
+    }
+    publishLayout();
+  }
+  const api = {
+    log: [],
+    setOnline(b) { online = !!b; subs.forEach((h) => h.status(status())); },
+    clearApps() { layout.favorites = []; layout.others = []; layout.hidden = []; publishLayout(); },
+    layout,
+    subscribe(h) {
+      subs.add(h);
+      setTimeout(() => { h.offset(0); h.status(status()); h.apps(structuredClone(apps)); h.icons({ ...icons }); h.layout(wire()); }, 250);
+      const t = setInterval(() => h.status(status()), 60000);
+      return () => { clearInterval(t); subs.delete(h); };
+    },
+    send(cmd) {
+      api.log.push({ ...cmd, at: Date.now() });
+      setTimeout(() => apply(cmd), 300);
+      return Promise.resolve();
+    },
+  };
+  window.loungeDemo = api;
+  return api;
+}
+
+// ---------------------------------------------------------------- state
+const S = {
+  key: null, backend: null, unsub: null,
+  status: null, statusSeen: false, offset: 0,
+  apps: {}, icons: {}, layout: normLayout(null), layoutLoaded: false, layoutSig: '',
+  pending: new Map(), search: '', hiddenOpen: false,
+};
+let session = 0;
+
+// ---------------------------------------------------------------- theme
+function currentTheme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute('content', t === 'light' ? '#FEF7FF' : '#141218');
+  const btn = $('themeBtn');
+  btn.innerHTML = icon(t === 'light' ? 'moon' : 'sun');
+  btn.setAttribute('aria-label', t === 'light' ? 'Switch to dark theme' : 'Switch to light theme');
+}
+$('themeBtn').addEventListener('click', () => {
+  const t = currentTheme() === 'light' ? 'dark' : 'light';
+  lsSet(LS_THEME, t); applyTheme(t);
+});
+if (window.matchMedia) {
+  matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+    const saved = lsGet(LS_THEME);
+    if (saved !== 'light' && saved !== 'dark') applyTheme(e.matches ? 'light' : 'dark');
+  });
+}
+
+// ---------------------------------------------------------------- snackbar
+let snackTimer = 0;
+function snack(text) {
+  const el = $('snack');
+  el.textContent = text; el.classList.add('show');
+  clearTimeout(snackTimer);
+  snackTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ---------------------------------------------------------------- menu
+let menuOpenFor = null;
+function openMenu(anchor, items) {
+  const m = $('menu');
+  m.innerHTML = items.map((it, i) => `<button type="button" role="menuitem" data-i="${i}" class="${it.danger ? 'danger' : ''}">${esc(it.label)}</button>`).join('');
+  m.onclick = (e) => {
+    const b = e.target.closest('button[data-i]'); if (!b) return;
+    const it = items[Number(b.dataset.i)]; closeMenu(); it.onClick();
+  };
+  m.style.left = '0px'; m.style.top = '0px';
+  m.classList.add('open'); m.setAttribute('aria-hidden', 'false');
+  const r = anchor.getBoundingClientRect();
+  const w = m.offsetWidth, h = m.offsetHeight;
+  let left = Math.min(r.right - w, innerWidth - w - 8); left = Math.max(8, left);
+  let top = r.bottom + 4;
+  if (top + h > innerHeight - 8) top = Math.max(8, r.top - h - 4);
+  m.style.left = left + 'px'; m.style.top = top + 'px';
+  menuOpenFor = anchor;
+  const first = m.querySelector('button'); if (first) first.focus({ preventScroll: true });
+}
+function closeMenu() {
+  const m = $('menu');
+  if (!m.classList.contains('open')) return;
+  m.classList.remove('open'); m.setAttribute('aria-hidden', 'true');
+  menuOpenFor = null;
+}
+document.addEventListener('pointerdown', (e) => { if (menuOpenFor && !$('menu').contains(e.target)) closeMenu(); }, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+addEventListener('resize', closeMenu);
+addEventListener('scroll', closeMenu, { passive: true });
+
+// ---------------------------------------------------------------- dialog
+function openDialog({ title, sub, html, actions }) {
+  const d = $('dlg');
+  if (d.open) d.close();
+  $('dlgTitle').textContent = title;
+  $('dlgSub').hidden = !sub; $('dlgSub').textContent = sub || '';
+  $('dlgBody').innerHTML = html || '';
+  const box = $('dlgActions');
+  box.innerHTML = '';
+  for (const a of actions) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = (a.primary ? 'btn-tonal' : 'btn-text') + ' press'; b.textContent = a.label;
+    b.addEventListener('click', () => { d.close(); if (a.onClick) a.onClick(); });
+    box.appendChild(b);
+  }
+  d.showModal();
+}
+$('dlg').addEventListener('click', (e) => { if (e.target === $('dlg')) $('dlg').close(); });
+
+// ---------------------------------------------------------------- patch notes
+function pnEntryHTML(e, isCurrent) {
+  return `<article class="pn-entry${isCurrent ? ' pn-current' : ''}">` +
+    `<div class="pn-head"><span class="pn-v">v${esc(e.v)}</span><span class="pn-date">${esc(e.date)}</span></div>` +
+    `<h3>${esc(e.title)}</h3><ul>${e.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></article>`;
+}
+function pnRender(list) { return list.map((e) => pnEntryHTML(e, e.v === APP_VERSION)).join(''); }
+function showPatchNotes() {
+  openDialog({ title: 'Patch Notes', sub: `Current version v${APP_VERSION}`, html: pnRender(PATCH_NOTES), actions: [{ label: 'Close', primary: true }] });
+}
+function checkWhatsNew(freshInstall) {
+  const raw = lsGet(LS_SEEN);
+  const last = raw == null ? null : parseInt(raw, 10);
+  let show = null;
+  if (raw == null || Number.isNaN(last)) {
+    if (freshInstall) { lsSet(LS_SEEN, String(APP_VERSION)); return; }
+    show = PATCH_NOTES.slice(0, 1); // pre-feature user: latest entry only
+  } else if (last < APP_VERSION) {
+    show = PATCH_NOTES.filter((e) => e.v > last);
+  }
+  if (!show || !show.length) return;
+  lsSet(LS_SEEN, String(APP_VERSION)); // written the moment it is shown
+  openDialog({ title: "What's New", html: pnRender(show), actions: [{ label: 'Got it', primary: true }] });
+}
+
+// ---------------------------------------------------------------- views
+function showPair(prefill) {
+  $('pairView').hidden = false; $('remoteView').hidden = true;
+  $('chip').hidden = true; $('menuBtn').hidden = true;
+  $('keyInput').value = prefill || '';
+  setKeyError(false);
+}
+function setKeyError(on) {
+  $('keyErr').hidden = !on;
+  $('keyInput').classList.toggle('invalid', on);
+  $('keyInput').setAttribute('aria-invalid', on ? 'true' : 'false');
+}
+$('keyInput').addEventListener('input', () => setKeyError(false));
+$('pairForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const k = parseKey($('keyInput').value);
+  if (!k) { setKeyError(true); $('keyInput').focus(); return; }
+  lsSet(LS_KEY, k);
+  connect(k);
+});
+
+async function connect(key) {
+  disconnect();
+  const my = ++session;
+  S.key = key;
+  $('pairView').hidden = true; $('remoteView').hidden = false;
+  $('chip').hidden = false; $('menuBtn').hidden = false;
+  renderAll();
+  let backend;
+  try {
+    backend = DEMO ? createDemoBackend(key) : await createFirebaseBackend(key);
+  } catch (err) {
+    if (my !== session) return;
+    console.warn('Lounge Remote: backend failed', err);
+    snack("Couldn't connect. Check your internet connection.");
+    return;
+  }
+  if (my !== session) return;
+  S.backend = backend;
+  S.unsub = backend.subscribe({
+    offset: (v) => { if (my !== session) return; S.offset = v; renderChip(); },
+    status: (v) => { if (my !== session) return; S.status = normStatus(v); S.statusSeen = true; renderChip(); },
+    apps: (v) => { if (my !== session) return; S.apps = normApps(v); renderContent(); },
+    icons: (v) => { if (my !== session) return; S.icons = normIcons(v); renderContent(); },
+    layout: (v) => {
+      if (my !== session) return;
+      S.layout = normLayout(v);
+      releaseHold();
+      S.layoutLoaded = true;
+      const sig = JSON.stringify(S.layout);
+      if (sig !== S.layoutSig) { S.layoutSig = sig; clearPending(); }
+      renderContent();
+    },
+    error: (err) => { if (my !== session) return; console.warn('Lounge Remote: read failed', err); },
+  });
+}
+function disconnect() {
+  session++;
+  if (S.unsub) { try { S.unsub(); } catch (e) {} }
+  S.unsub = null; S.backend = null; S.key = null;
+  S.status = null; S.statusSeen = false; S.offset = 0;
+  S.apps = {}; S.icons = {}; S.layout = normLayout(null); S.layoutLoaded = false; S.layoutSig = '';
+  clearPending(); S.search = ''; $('searchInput').value = ''; S.hiddenOpen = false;
+  endDrag(true);
+  releaseHold();
+}
+function unpair() {
+  disconnect();
+  lsDel(LS_KEY);
+  showPair('');
+}
+
+$('menuBtn').innerHTML = icon('more');
+$('menuBtn').addEventListener('click', (e) => {
+  if (menuOpenFor === e.currentTarget) { closeMenu(); return; }
+  openMenu(e.currentTarget, [
+    { label: 'Patch notes', onClick: showPatchNotes },
+    { label: 'Unpair', danger: true, onClick: () => openDialog({
+      title: 'Unpair this phone?',
+      html: '<p style="margin:0;color:var(--on-var)">You can pair again any time with the key shown on the TV.</p>',
+      actions: [{ label: 'Cancel' }, { label: 'Unpair', primary: true, onClick: unpair }],
+    }) },
+  ]);
+});
+
+// ---------------------------------------------------------------- online status
+function onlineState() {
+  if (!S.status) return S.statusSeen ? 'offline' : 'waiting';
+  return (Date.now() + S.offset) - S.status.lastSeen < ONLINE_MS ? 'online' : 'offline';
+}
+function renderChip() {
+  const st = onlineState();
+  const chip = $('chip');
+  chip.classList.toggle('online', st === 'online');
+  chip.classList.toggle('offline', st === 'offline');
+  $('chipText').textContent = st === 'online' ? 'Online' : st === 'offline' ? 'Offline' : 'Waiting for TV';
+  if (!S.status && st === 'offline') $('chipText').textContent = 'Waiting for TV';
+}
+setInterval(() => { if (S.key) renderChip(); }, 10000);
+
+// ---------------------------------------------------------------- commands
+function labelOf(pkg) { return (S.apps[pkg] && S.apps[pkg].label) || pkg; }
+function clearPending() { for (const t of S.pending.values()) clearTimeout(t); S.pending.clear(); }
+function setPending(pkg) {
+  clearTimeout(S.pending.get(pkg));
+  S.pending.set(pkg, setTimeout(() => { S.pending.delete(pkg); renderContent(); }, PENDING_MS));
+}
+function send(type, pkg, to) {
+  if (!S.backend) { snack("Not connected yet. Try again in a moment."); return; }
+  const online = onlineState() === 'online';
+  if (!online) snack('TV is offline');
+  else if (type === 'launch') snack(`Opening ${labelOf(pkg)} on TV`);
+  if (pkg) setPending(pkg);
+  const cmd = { type };
+  if (pkg) cmd.pkg = pkg;
+  if (to != null) cmd.to = to;
+  Promise.resolve().then(() => S.backend.send(cmd)).catch((err) => {
+    console.warn('Lounge Remote: send failed', err);
+    snack("Couldn't send that to the TV");
+  });
+  if (pkg) renderContent();
+}
+$('homeBtn').addEventListener('click', () => send('home'));
+$('backBtn').addEventListener('click', () => send('back'));
+
+// ---------------------------------------------------------------- rendering
+function artHTML(pkg) {
+  const src = S.icons[pkgKey(pkg)];
+  const l = labelOf(pkg);
+  const letter = `<span class="letter" aria-hidden="true">${esc((l.trim()[0] || '?').toUpperCase())}</span>`;
+  return src ? `<img class="app-img" alt="" src="${esc(src)}" data-letter="${esc((l.trim()[0] || '?').toUpperCase())}">` : letter;
+}
+// Broken icon → letter tile.
+document.addEventListener('error', (e) => {
+  const t = e.target;
+  if (t && t.classList && t.classList.contains('app-img')) {
+    const s = document.createElement('span'); s.className = 'letter'; s.textContent = t.dataset.letter || '?';
+    t.replaceWith(s);
+  }
+}, true);
+
+let renderQueued = false;
+function renderAll() { renderChip(); renderContent(); }
+function renderContent() {
+  if (drag) { renderQueued = true; return; }
+  renderQueued = false;
+  const L = S.layout;
+  const hasApps = L.favorites.length + L.others.length + L.hidden.length > 0;
+  $('loading').hidden = S.layoutLoaded;
+  $('emptyState').hidden = !S.layoutLoaded || hasApps;
+  $('content').hidden = !S.layoutLoaded || !hasApps;
+  if (!S.layoutLoaded || !hasApps) return;
+  renderFavs(); renderGrid(); renderHidden();
+}
+function renderFavs() {
+  if (hold) return; // dropped row stays put until the TV republishes or 5 s pass
+  const favs = S.layout.favorites;
+  $('favEmpty').hidden = favs.length > 0;
+  $('favList').innerHTML = favs.map((p, i) => `
+    <li class="row" data-pkg="${esc(p)}" data-i="${i}">
+      <span class="handle" data-act="drag" aria-label="Drag to reorder ${esc(labelOf(p))}" role="button">${icon('drag')}</span>
+      <button type="button" class="row-main" data-act="launch"><span class="art-sm">${artHTML(p)}</span><span class="row-label">${esc(labelOf(p))}</span>${S.pending.has(p) ? '<span class="spin" aria-label="Sending"></span>' : ''}</button>
+      <button type="button" class="icon-btn press" data-act="more" aria-label="More options for ${esc(labelOf(p))}">${icon('more')}</button>
+    </li>`).join('');
+}
+function renderGrid() {
+  const q = S.search.trim().toLowerCase();
+  const all = S.layout.others;
+  const list = q ? all.filter((p) => labelOf(p).toLowerCase().includes(q)) : all;
+  $('grid').innerHTML = list.map((p) => `
+    <div class="tile" role="button" tabindex="0" data-pkg="${esc(p)}" aria-label="${esc(labelOf(p))}">
+      <div class="tile-art">${artHTML(p)}${S.pending.has(p) ? '<span class="spin" aria-label="Sending"></span>' : ''}</div>
+      <div class="tile-label">${esc(labelOf(p))}</div>
+      <button type="button" class="tile-more" data-act="more" aria-label="More options for ${esc(labelOf(p))}">${icon('more')}</button>
+    </div>`).join('');
+  const ge = $('gridEmpty');
+  ge.hidden = list.length > 0;
+  ge.textContent = q ? `No apps match “${S.search.trim()}”.` : 'Every app is in Favorites or Hidden.';
+}
+function renderHidden() {
+  const hid = S.layout.hidden;
+  $('hiddenSec').hidden = hid.length === 0;
+  if (hid.length === 0) S.hiddenOpen = false;
+  $('hiddenTitle').textContent = `Hidden (${hid.length})`;
+  $('hiddenToggle').setAttribute('aria-expanded', String(S.hiddenOpen));
+  $('hiddenList').hidden = !S.hiddenOpen;
+  $('hiddenList').innerHTML = hid.map((p) => `
+    <li class="row" data-pkg="${esc(p)}">
+      <span class="art-sm">${artHTML(p)}</span><span class="row-label">${esc(labelOf(p))}</span>
+      ${S.pending.has(p) ? '<span class="spin" aria-label="Sending"></span>' : ''}
+      <button type="button" class="btn-tonal press" data-act="unhide">Unhide</button>
+    </li>`).join('');
+}
+$('hiddenToggle').addEventListener('click', () => { S.hiddenOpen = !S.hiddenOpen; renderHidden(); });
+$('searchInput').addEventListener('input', (e) => { S.search = e.target.value; renderGrid(); });
+
+// Favorites: tap = launch, ⋮ = remove/hide
+$('favList').addEventListener('click', (e) => {
+  const li = e.target.closest('.row'); if (!li) return;
+  const pkg = li.dataset.pkg;
+  const act = e.target.closest('[data-act]');
+  if (!act) return;
+  if (act.dataset.act === 'launch') send('launch', pkg);
+  else if (act.dataset.act === 'more') {
+    if (menuOpenFor === act) { closeMenu(); return; }
+    openMenu(act, [
+      { label: 'Remove from favorites', onClick: () => send('unfavorite', pkg) },
+      { label: 'Hide', onClick: () => send('hide', pkg) },
+    ]);
+  }
+});
+
+// All apps grid: tap = launch, ⋮ or long-press = add to favorites / hide
+function tileMenu(anchor, pkg) {
+  openMenu(anchor, [
+    { label: 'Add to favorites', onClick: () => send('favorite', pkg) },
+    { label: 'Hide', onClick: () => send('hide', pkg) },
+  ]);
+}
+let lp = null; // long-press tracker
+let suppressClick = false;
+const grid = $('grid');
+grid.addEventListener('pointerdown', (e) => {
+  const tile = e.target.closest('.tile');
+  if (!tile || e.target.closest('.tile-more') || e.button > 0) return;
+  suppressClick = false;
+  lp = { x: e.clientX, y: e.clientY, tile, t: setTimeout(() => {
+    suppressClick = true; lp = null;
+    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (er) {} }
+    tileMenu(tile, tile.dataset.pkg);
+  }, 500) };
+});
+const cancelLp = () => { if (lp) { clearTimeout(lp.t); lp = null; } };
+grid.addEventListener('pointermove', (e) => { if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 10) cancelLp(); });
+grid.addEventListener('pointerup', cancelLp);
+grid.addEventListener('pointercancel', cancelLp);
+grid.addEventListener('pointerleave', cancelLp);
+grid.addEventListener('contextmenu', (e) => { if (e.target.closest('.tile')) e.preventDefault(); });
+grid.addEventListener('click', (e) => {
+  const tile = e.target.closest('.tile'); if (!tile) return;
+  if (suppressClick) { suppressClick = false; return; }
+  const more = e.target.closest('.tile-more');
+  if (more) { if (menuOpenFor === more) closeMenu(); else tileMenu(more, tile.dataset.pkg); return; }
+  send('launch', tile.dataset.pkg);
+});
+grid.addEventListener('keydown', (e) => {
+  const tile = e.target.closest('.tile'); if (!tile || e.target !== tile) return;
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); send('launch', tile.dataset.pkg); }
+  else if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); tileMenu(tile, tile.dataset.pkg); }
+});
+
+$('hiddenList').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act="unhide"]'); if (!b) return;
+  send('unhide', b.closest('.row').dataset.pkg);
+});
+
+// ---------------------------------------------------------------- drag to reorder (handle only)
+let drag = null;
+let hold = false;
+let holdTimer = 0;
+function releaseHold() { clearTimeout(holdTimer); hold = false; }
+const favList = $('favList');
+favList.addEventListener('pointerdown', (e) => {
+  const h = e.target.closest('.handle'); if (!h || drag || hold || e.button > 0) return;
+  e.preventDefault();
+  closeMenu();
+  const li = h.closest('.row');
+  const rows = [...favList.children];
+  const from = rows.indexOf(li);
+  const rects = rows.map((r) => r.getBoundingClientRect());
+  const gap = parseFloat(getComputedStyle(favList).rowGap) || 0;
+  try { h.setPointerCapture(e.pointerId); } catch (er) {}
+  drag = {
+    id: e.pointerId, li, rows, from, to: from, gap, handle: h,
+    tops: rects.map((r) => r.top + scrollY), heights: rects.map((r) => r.height),
+    startY: e.clientY + scrollY, lastClientY: e.clientY, scrollTimer: 0,
+  };
+  li.classList.add('dragging');
+  drag.scrollTimer = setInterval(autoScroll, 16);
+});
+function updateDrag() {
+  const d = drag; if (!d) return;
+  const pageY = d.lastClientY + scrollY;
+  let dy = pageY - d.startY;
+  const minDy = d.tops[0] - d.tops[d.from];
+  const maxDy = d.tops[d.rows.length - 1] + d.heights[d.rows.length - 1] - (d.tops[d.from] + d.heights[d.from]);
+  dy = Math.max(minDy - 8, Math.min(maxDy + 8, dy));
+  d.li.style.transform = `translateY(${dy}px)`;
+  const center = d.tops[d.from] + dy + d.heights[d.from] / 2;
+  let to = 0;
+  d.rows.forEach((r, j) => { if (j !== d.from && d.tops[j] + d.heights[j] / 2 < center) to++; });
+  d.to = to;
+  const shift = d.heights[d.from] + d.gap;
+  d.rows.forEach((r, j) => {
+    if (j === d.from) return;
+    let s = 0;
+    if (d.from < to && j > d.from && j <= to) s = -shift;
+    else if (to < d.from && j >= to && j < d.from) s = shift;
+    r.style.transform = s ? `translateY(${s}px)` : '';
+  });
+}
+function autoScroll() {
+  const d = drag; if (!d) return;
+  const edge = 72;
+  let v = 0;
+  if (d.lastClientY < edge + 56) v = -Math.ceil((edge + 56 - d.lastClientY) / 6);
+  else if (d.lastClientY > innerHeight - edge) v = Math.ceil((d.lastClientY - (innerHeight - edge)) / 6);
+  if (v) { scrollBy(0, v); updateDrag(); }
+}
+favList.addEventListener('pointermove', (e) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  e.preventDefault();
+  drag.lastClientY = e.clientY;
+  updateDrag();
+});
+function finishDrag(e, cancelled) {
+  if (!drag || (e && e.pointerId !== drag.id)) return;
+  const d = drag;
+  clearInterval(d.scrollTimer);
+  const pkg = d.li.dataset.pkg;
+  if (!cancelled && d.to !== d.from) {
+    // Hold the dropped position until the TV republishes (or 5 s), then render what the TV says.
+    const dy = d.tops[d.to] - d.tops[d.from] + (d.to > d.from ? (d.heights[d.to] - d.heights[d.from]) : 0);
+    d.li.classList.add('settle');
+    d.li.style.transform = `translateY(${dy}px)`;
+    drag = null;
+    hold = true;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => { hold = false; renderContent(); }, PENDING_MS);
+    send('moveFavorite', pkg, d.to);
+    const row = favList.querySelector(`.row[data-pkg="${CSS.escape(pkg)}"] .row-main`);
+    if (row && !row.querySelector('.spin')) row.insertAdjacentHTML('beforeend', '<span class="spin" aria-label="Sending"></span>');
+    if (renderQueued) renderContent();
+    return;
+  }
+  endDrag(false);
+}
+function endDrag(silent) {
+  const d = drag; if (!d) return;
+  clearInterval(d.scrollTimer);
+  drag = null;
+  d.rows.forEach((r) => { r.style.transform = ''; });
+  d.li.classList.remove('dragging');
+  if (!silent && renderQueued) renderContent();
+}
+favList.addEventListener('pointerup', (e) => finishDrag(e, false));
+favList.addEventListener('pointercancel', (e) => finishDrag(e, true));
+favList.addEventListener('lostpointercapture', (e) => { if (drag && e.pointerId === drag.id) finishDrag(e, false); });
+
+// ---------------------------------------------------------------- boot
+fillIcons();
+applyTheme(currentTheme());
+const freshInstall = lsGet(LS_KEY) == null && lsGet(LS_THEME) == null && lsGet(LS_SEEN) == null;
+
+// Pairing URL: #k=<key> → store, then strip the fragment.
+function takeHashKey() {
+  const m = location.hash.match(/[#&]k=([^&]*)/);
+  if (!m) return { found: false };
+  history.replaceState(null, '', location.pathname + location.search);
+  const k = parseKey('#k=' + m[1]);
+  if (k) lsSet(LS_KEY, k);
+  return { found: true, key: k, raw: m[1] };
+}
+const fromHash = takeHashKey();
+const hashRejected = fromHash.found && !fromHash.key ? fromHash.raw : null;
+// Same page opened again with a new #k= (no reload): pair with it.
+addEventListener('hashchange', () => {
+  const h = takeHashKey();
+  if (!h.found) return;
+  if (h.key) { if (h.key !== S.key) connect(h.key); }
+  else if (!S.key) { showPair(h.raw); setKeyError(true); }
+});
+
+const stored = parseKey(lsGet(LS_KEY));
+if (stored) connect(stored);
+else {
+  showPair(hashRejected ? (() => { try { return decodeURIComponent(hashRejected); } catch (e) { return hashRejected; } })() : '');
+  if (hashRejected) setKeyError(true);
+}
+checkWhatsNew(freshInstall);
+
+if (location.protocol === 'https:' && 'serviceWorker' in navigator && !DEMO) {
+  navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Lounge Remote: SW registration failed', err));
+}
+</script>
+</body>
+</html>

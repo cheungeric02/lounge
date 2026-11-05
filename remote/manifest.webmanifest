@@ -1,0 +1,17 @@
+{
+  "name": "Lounge Remote",
+  "short_name": "Lounge",
+  "description": "Phone remote for the Lounge TV home screen.",
+  "id": "/lounge/remote/",
+  "start_url": "/lounge/remote/",
+  "scope": "/lounge/remote/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#141218",
+  "theme_color": "#141218",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
