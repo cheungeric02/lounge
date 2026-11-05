@@ -14,6 +14,26 @@
 
     <queries>
         <package android:name="com.android.tv.settings" />
+        <!-- v3: LinkRouter targets + screensaver (Somnambulator) -->
+        <package android:name="com.google.android.youtube.tv" />
+        <package android:name="com.netflix.ninja" />
+        <package android:name="com.spotify.tv.android" />
+        <package android:name="com.amazon.amazonvideo.livingroom" />
+        <package android:name="com.disney.disneyplus" />
+        <package android:name="com.android.systemui" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
@@ -61,6 +81,17 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/home_button_service" />
+        </service>
+
+        <!-- v3: Notification access only so MediaSessionManager.getActiveSessions is allowed. -->
+        <service
+            android:name=".home.MediaAccessService"
+            android:exported="false"
+            android:label="@string/media_access_service_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
         </service>
 
         <receiver

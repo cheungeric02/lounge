@@ -20,6 +20,21 @@ sealed interface RemoteCommand {
     data object Home : RemoteCommand
     data object Back : RemoteCommand
 
+    // ---- v3 ----
+    enum class MediaAction { Toggle, Play, Pause, Next, Prev, Seek }
+    enum class VolumeAction { Up, Down, Mute }
+
+    /** [ms] is the relative seek delta (only for [MediaAction.Seek]; null otherwise). */
+    data class Media(val action: MediaAction, val ms: Long? = null) : RemoteCommand
+    data class Volume(val action: VolumeAction) : RemoteCommand
+    /** 0 cancels; 1..240 arms. */
+    data class Sleep(val minutes: Int) : RemoteCommand
+    /** Already validated by [LinkRouter.isAcceptable]. */
+    data class Open(val url: String) : RemoteCommand
+    /** Whole field value (≤ [TvInput.MAX_TEXT] chars); "" clears. */
+    data class Text(val text: String) : RemoteCommand
+    data object Submit : RemoteCommand
+
     companion object {
         /** Commands older/newer than this (vs estimated server time) are dropped. */
         const val FRESH_WINDOW_MS = 30_000L
@@ -45,8 +60,41 @@ sealed interface RemoteCommand {
                 }
                 "home" -> Home
                 "back" -> Back
+                "media" -> parseMedia(obj)
+                "volume" -> when (obj.stringField("action")) {
+                    "up" -> Volume(VolumeAction.Up)
+                    "down" -> Volume(VolumeAction.Down)
+                    "mute" -> Volume(VolumeAction.Mute)
+                    else -> null
+                }
+                "sleep" -> {
+                    val m = obj.longField("minutes")
+                    if (m != null && m in 0..SleepTimer.MAX_MINUTES.toLong()) Sleep(m.toInt()) else null
+                }
+                "open" -> obj.stringField("url")?.trim()?.takeIf(LinkRouter::isAcceptable)?.let(::Open)
+                "text" -> obj.stringField("text")?.takeIf { it.length <= TvInput.MAX_TEXT }?.let(::Text)
+                "submit" -> Submit
                 else -> null
             }
+        }
+
+        /** Largest |seek delta| accepted (24 h). */
+        const val MAX_SEEK_MS = 86_400_000L
+
+        private fun parseMedia(obj: JsonObject): Media? {
+            val action = when (obj.stringField("action")) {
+                "toggle" -> MediaAction.Toggle
+                "play" -> MediaAction.Play
+                "pause" -> MediaAction.Pause
+                "next" -> MediaAction.Next
+                "prev" -> MediaAction.Prev
+                "seek" -> MediaAction.Seek
+                else -> return null
+            }
+            if (action != MediaAction.Seek) return Media(action)
+            val ms = obj.longField("ms") ?: return null
+            if (ms == 0L || ms < -MAX_SEEK_MS || ms > MAX_SEEK_MS) return null
+            return Media(action, ms)
         }
 
         /** The numeric server timestamp `at` (ms), or null if missing / non-numeric. */
@@ -107,11 +155,15 @@ sealed interface RemoteCommand {
             (get(name) as? JsonPrimitive)?.takeIf { it.isString }?.content
 
         private fun JsonObject.intField(name: String): Int? {
+            val l = longField(name) ?: return null
+            return l.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
+        }
+
+        /** Integral number (JSON number, not string/bool); null otherwise. */
+        private fun JsonObject.longField(name: String): Long? {
             val p = get(name) as? JsonPrimitive ?: return null
             if (p.isString || p is JsonNull) return null
-            val l = p.longOrNull ?: p.doubleOrNull?.takeIf { it.isFinite() && it == Math.floor(it) }?.toLong()
-                ?: return null
-            return l.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
+            return p.longOrNull ?: p.doubleOrNull?.takeIf { it.isFinite() && it == Math.floor(it) && Math.abs(it) < 9.0e15 }?.toLong()
         }
     }
 }
