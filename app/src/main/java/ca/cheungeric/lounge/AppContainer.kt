@@ -4,6 +4,7 @@ import android.content.Context
 import ca.cheungeric.lounge.data.AppsRepository
 import ca.cheungeric.lounge.data.LayoutPrefs
 import ca.cheungeric.lounge.data.WeatherRepository
+import ca.cheungeric.lounge.remote.RemoteBridge
 import ca.cheungeric.lounge.update.UpdateManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,4 +19,7 @@ class AppContainer(val context: Context) {
     val layoutPrefs: LayoutPrefs by lazy { LayoutPrefs(context) }
     val weatherRepository: WeatherRepository by lazy { WeatherRepository(context) }
     val updateManager: UpdateManager by lazy { UpdateManager(context, appScope) }
+
+    /** Phone remote (v2); ref-counted by HomeButtonService + MainActivity. */
+    val remoteBridge: RemoteBridge by lazy { RemoteBridge(context, appsRepository, layoutPrefs) }
 }

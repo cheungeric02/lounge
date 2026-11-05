@@ -17,17 +17,17 @@
 - `app/src/main/res/xml/home_button_service.xml` — accessibility service config
 - `app/src/main/res/drawable/banner.xml`, `ic_launcher.xml` — placeholder "L" TV banner (320x180) + icon
 - `app/src/main/res/values/` — strings, colors, window theme
-- `app/src/main/java/ca/cheungeric/lounge/MainActivity.kt` — launcher activity: in-memory Home|Settings nav + Back, tile sheet, What's New gate, app launching + 3 s snack, update banner / home-button tip (lounge_prefs `lounge_homeTipDismissed`), weather refresh while STARTED, onNewIntent → Home
+- `app/src/main/java/ca/cheungeric/lounge/MainActivity.kt` — launcher activity: in-memory Home|Settings nav + Back, tile sheet, What's New gate, app launching + 3 s snack, update banner / home-button tip (lounge_prefs `lounge_homeTipDismissed`), weather refresh while STARTED, remoteBridge acquire/release in onStart/onStop, onNewIntent → Home
 - `app/src/main/java/ca/cheungeric/lounge/LoungeApp.kt` — Application; builds AppContainer
-- `app/src/main/java/ca/cheungeric/lounge/AppContainer.kt` — manual DI container (repos, layoutPrefs, appScope, updateManager)
+- `app/src/main/java/ca/cheungeric/lounge/AppContainer.kt` — manual DI container (repos, layoutPrefs, appScope, updateManager, remoteBridge)
 - `app/src/main/java/ca/cheungeric/lounge/data/` — data layer:
   - `AppEntry.kt` — app model
   - `AppsRepository.kt` — PackageManager query (leanback ∪ launcher, dedupe, banner/icon), package-change receiver, `start()/stop()/refresh()`, `apps` StateFlow
   - `LayoutPrefs.kt` — DataStore "lounge_layout" (+ LayoutPrefsState, StringListCodec JSON lists)
-  - `HomeLayout.kt` — pure `build` + transforms (initDefaults, toggleFavorite, hide/unhide, moveLeft/Right), `DEFAULT_FAVORITES`, HomeState
+  - `HomeLayout.kt` — pure `build` + transforms (initDefaults, toggleFavorite, hide/unhide, moveLeft/Right, moveFavoriteTo), `DEFAULT_FAVORITES`, HomeState
   - `WeatherRepository.kt` — Open-Meteo fetch + DataStore "lounge_weather" cache + `startAutoRefresh`; Weather, WeatherParser, WeatherCodes (WMO → WeatherDescription/WeatherIconKey)
 - `app/src/test/java/ca/cheungeric/lounge/data/` — HomeLayoutTest, WeatherTest
-- `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService
+- `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService; holds a RemoteBridge ref while connected; static `loungeIntent()` + `performBack()` hooks
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeDecider.kt` — pure Home-key / stock-launcher-window decision logic (KeyDecision, STOCK_LAUNCHERS)
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeServiceStatus.kt` — isEnabled(context) + openAccessibilitySettings(context)
 - `app/src/test/java/ca/cheungeric/lounge/home/HomeDeciderTest.kt` — decider + enabled-list parser tests
@@ -51,4 +51,14 @@
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt` — APP_VERSION (version source), PatchNote, PATCH_NOTES
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/WhatsNew.kt` — WhatsNewGate (pure), WhatsNewStore (lounge_prefs / lounge_lastSeenVer, captureFreshInstall), checkWhatsNew
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotesUi.kt` — PatchNoteEntry (shared renderer), PatchNotesList (Settings), WhatsNewDialog
+- `remote/words.txt` — the 256 pairing-key words, one per line (phone web app embeds it; must equal WordList)
+- `app/src/main/java/ca/cheungeric/lounge/remote/` — phone remote bridge (v2, T7):
+  - `WordList.kt` — 256-word list (== remote/words.txt)
+  - `RemoteKey.kt` — generate/validate/normalize (bare key or pairing URL `#k=`), pairingUrl
+  - `SseParser.kt` — pure incremental Firebase REST stream parser (SseEvent: Put/Patch/KeepAlive/Cancel/AuthRevoked)
+  - `FirebaseRest.kt` — RemoteDb interface + HttpURLConnection impl (get/put/patch/delete/stream, 307 follow, Date-header clock offset, `urlFor` guard: only `lounge/<validKey>[/…]`)
+  - `RemoteCommand.kt` — pure command parse/freshness (30 s), pkgKey helpers, childrenOf(stream event)
+  - `RemotePayloads.kt` — pure tv/status, tv/apps, tv/layout JSON builders + sha1/data-URI
+  - `RemoteBridge.kt` — process-wide ref-counted bridge (AppContainer.remoteBridge): prefs lounge_remoteEnabled/lounge_remoteKey, setEnabled/regenerateKey, key + status StateFlows, publishes status/apps/layout/icons, consumes cmd/, backoff 2→60 s
+- `app/src/test/java/ca/cheungeric/lounge/remote/` — SseParser, RemoteCommand, RemoteKey (+ path guard, WordList), RemotePayloads tests; `data/MoveFavoriteToTest.kt`
 - `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests (data/, home/, update/, ui/patchnotes/, ui/home/ incl. HomeLogicTest)

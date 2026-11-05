@@ -89,6 +89,36 @@ object HomeLayout {
         installedPkgs: Collection<String>? = null,
     ): LayoutPrefsState = move(prefs, pkg, +1, installedVisibleOthersOrder, installedPkgs)
 
+    /**
+     * Move favorite [pkg] to [index] in the visible favorites row (as [build] shows it: not hidden,
+     * and installed when [installedPkgs] is given). [index] is clamped to the row. Invisible stored
+     * favorites (hidden/uninstalled) keep their slots. No-op (same instance) if [pkg] is not a
+     * visible favorite or the order would not change.
+     */
+    fun moveFavoriteTo(
+        prefs: LayoutPrefsState,
+        pkg: String,
+        index: Int,
+        installedPkgs: Collection<String>? = null,
+    ): LayoutPrefsState {
+        if (pkg !in prefs.favorites || pkg in prefs.hidden) return prefs
+        val installed = installedPkgs?.toSet()
+        val favs = prefs.favorites.distinct()
+        fun isVisible(p: String) = p !in prefs.hidden && (installed == null || p in installed)
+        val visible = favs.filter(::isVisible)
+        val from = visible.indexOf(pkg)
+        if (from < 0) return prefs
+        val to = index.coerceIn(0, visible.lastIndex)
+        if (to == from) return prefs
+        val reordered = visible.toMutableList().apply {
+            removeAt(from)
+            add(to, pkg)
+        }
+        val it = reordered.iterator()
+        val result = favs.map { p -> if (isVisible(p)) it.next() else p }
+        return if (result == prefs.favorites) prefs else prefs.copy(favorites = result)
+    }
+
     private fun move(
         prefs: LayoutPrefsState,
         pkg: String,

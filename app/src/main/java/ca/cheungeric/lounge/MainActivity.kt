@@ -211,6 +211,16 @@ class MainActivity : ComponentActivity() {
         return null
     }
 
+    override fun onStart() {
+        super.onStart()
+        container.remoteBridge.acquire()
+    }
+
+    override fun onStop() {
+        container.remoteBridge.release()
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
         HomeButtonService.setLoungeResumed(true)
