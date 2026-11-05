@@ -161,3 +161,37 @@ Package names are not valid RTDB keys → `pkgKey = pkg.replace('.', ',')`.
 - Unpaired: welcome card, "Pairing key" field (accepts the 4-word key or a full pairing URL), hint "On the TV: Lounge → Settings → Phone remote, then scan the QR code".
 - Paired: top bar (title "Lounge", online/offline chip, theme toggle, ⋮ menu: Patch notes, Unpair). Remote strip: Home + Back pill buttons. **Favorites**: reorderable list (drag handle, pointer events, works with touch), tap row = launch, overflow = Remove from favorites / Hide. **All apps**: search field + icon grid (tap = launch, overflow/long-press = Add to favorites / Hide). **Hidden** (collapsed section): Unhide. Snackbar "Opening Netflix on TV" / "TV is offline" when offline.
 - No optimistic layout: lists update when the TV republishes `tv/layout` (typically < 1 s); a pending command shows a subtle spinner on its row for up to 5 s.
+
+## v3 — Now Playing, Share to TV, volume + sleep, phone typing
+
+Same posture as v2: the phone only sends `cmd/*`, the TV publishes `tv/*`. All new TV behaviour lives in the existing `remote/` bridge plus two OS hooks.
+
+### TV hooks
+- **Media access**: new `NotificationListenerService` `home/MediaAccessService` (manifest-declared, `BIND_NOTIFICATION_LISTENER_SERVICE`, does nothing with notifications). It only exists so `MediaSessionManager.getActiveSessions(ComponentName)` is allowed. The user grants it once (Settings → Phone remote → "Now Playing access", same component-fallback pattern as `HomeServiceStatus`: try `Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`, then TV-settings components, then `ACTION_SETTINGS`; always show manual steps). Without it, Now Playing/transport are off and the phone says so.
+- **Typing**: `home_button_service.xml` gains `typeViewFocused|typeViewTextChanged|typeWindowStateChanged`, `canRetrieveWindowContent="true"`, `flagRetrieveInteractiveWindows`. Only editable, focused nodes are read; never read or publish non-editable content, and never publish password fields (`isPassword` → `active:false`).
+
+### Data contract additions (`lounge/<key>/…`)
+- `tv/status` gains `mediaAccess: Boolean`, `typing: Boolean` (HomeButtonService running).
+- `tv/nowPlaying` — `{ state: "playing"|"paused"|"none", pkg, app, title, subtitle, durationMs, positionMs, positionAt, speed, artHash, canSeek, canSkip }`. `positionAt` is estimated server time (ms) when `positionMs` was sampled. Chosen session: first `STATE_PLAYING`, else most recent paused, else `state:"none"`. Rewritten on metadata/playback-state changes (not on every tick). Phone extrapolates position while playing.
+- `tv/art` — `"data:image/jpeg;base64,…"` of the album/poster art scaled to fit 320×320, written only when `artHash` (sha1 of bytes) changes; deleted when none.
+- `tv/volume` — `{ level, max, muted }` for `STREAM_MUSIC`, republished after each volume command and on change (poll every 5 s while the bridge runs is fine).
+- `tv/sleep` — `{ at: <server ms> }` while a sleep timer is armed, deleted otherwise.
+- `tv/input` — `{ active: Boolean, pkg, hint, text }` for the currently focused editable field; `active:false` when none.
+- New `cmd` types (same freshness/delete-first rules):
+  - `media` `{ action: "toggle"|"play"|"pause"|"next"|"prev"|"seek", ms? }` — `seek` is relative (`ms` = ±delta, clamped to [0, duration]).
+  - `volume` `{ action: "up"|"down"|"mute" }` — `AudioManager.adjustStreamVolume(STREAM_MUSIC, …, FLAG_SHOW_UI)`; mute = `ADJUST_TOGGLE_MUTE`.
+  - `sleep` `{ minutes: 0..240 }` — 0 cancels. On expiry: pause the active session, then go to Lounge Home and try to start the screensaver (`com.android.systemui/.Somnambulator`, ignore failure). Timer held by the bridge (process stays alive via the accessibility service); re-armed from `tv/sleep` on bridge restart if still in the future.
+  - `open` `{ url }` — only `http`/`https`, ≤2048 chars. Pure `LinkRouter` maps URL → target: YouTube (`youtube.com`, `youtu.be`, `m.youtube.com`, `music.youtube.com`) → `ACTION_VIEW` on `com.google.android.youtube.tv` (normalise youtu.be/shorts to `https://www.youtube.com/watch?v=ID`); Netflix (`netflix.com/title|watch/ID`) → `com.netflix.ninja`; Spotify (`open.spotify.com`) → `com.spotify.tv.android`; Prime (`primevideo.com`, `amazon.*/gp/video`) → `com.amazon.amazonvideo.livingroom`; Disney+ → `com.disney.disneyplus`; anything else → plain `ACTION_VIEW` (any resolver). Each mapped target falls back to plain `ACTION_VIEW`, then to a TV toast "Can't open that link on this TV". Brings the app forward with `FLAG_ACTIVITY_NEW_TASK`.
+  - `text` `{ text }` (≤500 chars) — `ACTION_SET_TEXT` on the focused editable node (whole value, phone sends the full string debounced). `submit` — `AccessibilityAction.ACTION_IME_ENTER` (API 30+), else ignored.
+- Limits (tell the user): typing works in standard Android text fields (Google TV search, Settings, most apps' search boxes); apps that draw their own on-screen keyboard (YouTube, Netflix) can't receive it. Volume on the Google TV box may be routed by HDMI-CEC; if the box has no volume of its own, commands do nothing.
+
+### Phone app v3
+- **Now Playing card** at the top of the paired view (above Home/Back): art (or app icon), title, subtitle, app name, progress bar with elapsed/total, transport row (⏮ / −10 / ⏯ / +10 / ⏭, hidden pieces when `canSeek`/`canSkip` false). Collapsed "Nothing playing" line when `state:"none"`; "Turn on Now Playing access on the TV" hint when `mediaAccess` false.
+- **Volume row**: − / mute / + with the level as a small bar; **Sleep** chip opens a sheet (Off, 15, 30, 60, 90 min, custom) and shows the countdown while armed.
+- **Keyboard**: when `tv/input.active`, a bottom sheet slides up automatically ("Typing into <app>") with a text field prefilled from `tv/input.text`, sends `text` debounced 200 ms, Enter → `submit`. Also a ⌨ button to open it manually.
+- **Send link**: ⋮ → "Send a link" sheet (paste URL). Manifest `share_target` `{ action: "/lounge/remote/", method: "GET", params: { title: "title", text: "text", url: "url" } }`; on load with those params, extract the first http(s) URL from url/text/title, send `open`, show "Opening on TV", then strip the query with `history.replaceState`.
+- `?demo=1` fake TV implements all of the above. Web APP_VERSION 3 / sw `lounge-remote-v3`, patch note.
+
+### TV Home v3
+- Small Now Playing pill/card in the Home header area when something is playing or paused (art thumb, title, app, state glyph). Not focusable-critical: D-pad order unchanged.
+- APP_VERSION 3 + patch note.
