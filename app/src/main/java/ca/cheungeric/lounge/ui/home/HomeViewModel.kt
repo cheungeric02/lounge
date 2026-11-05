@@ -10,7 +10,16 @@ import ca.cheungeric.lounge.data.HomeState
 import ca.cheungeric.lounge.data.LayoutPrefs
 import ca.cheungeric.lounge.data.LayoutPrefsState
 import ca.cheungeric.lounge.data.Weather
+import ca.cheungeric.lounge.data.HistoryEntry
+import ca.cheungeric.lounge.remote.BraviaControl
+import ca.cheungeric.lounge.remote.BraviaRpc
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -83,8 +92,8 @@ class HomeLogic(
         scope.launch { runCatching { store.update(transform) } }
 }
 
-/** Android wrapper: [HomeLogic] in viewModelScope, wired to the [AppContainer]. */
-class HomeViewModel(container: AppContainer) : ViewModel() {
+/** Android wrapper: [HomeLogic] in viewModelScope, wired to the [AppContainer], plus the v6 extras. */
+class HomeViewModel(private val container: AppContainer) : ViewModel() {
     val logic = HomeLogic(
         scope = viewModelScope,
         apps = container.appsRepository.apps,
@@ -101,8 +110,110 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
     fun moveLeft(pkg: String) { logic.moveLeft(pkg) }
     fun moveRight(pkg: String) { logic.moveRight(pkg) }
 
+    // ---- v6: HDMI inputs (level 2) ----
+
+    private val _inputs = MutableStateFlow<InputsUiState>(InputsUiState.Loading)
+    val inputs: StateFlow<InputsUiState> = _inputs.asStateFlow()
+    private var inputsJob: Job? = null
+    private var pollJob: Job? = null
+    private var level2Seen = false
+
+    /** Re-reads the TV's inputs. Keeps the current tiles on screen while refreshing. */
+    fun refreshInputs() {
+        if (inputsJob?.isActive == true) return
+        inputsJob = viewModelScope.launch {
+            val r = runCatching { container.braviaControl.inputs() }
+                .getOrElse { BraviaControl.InputsResult.Error(it.javaClass.simpleName) }
+            _inputs.value = InputsUiState.of(r)
+        }
+    }
+
+    private var level2Focused = false
+    private var resumed = true
+
+    /** Level 2 focus: refresh on first focus, then every [INPUTS_POLL_MS] while it stays focused. */
+    fun onLevel2Focused(focused: Boolean) {
+        level2Focused = focused
+        if (focused && !level2Seen) {
+            level2Seen = true
+            refreshInputs()
+        }
+        updatePolling()
+    }
+
+    /** Home resumed / paused: refreshes on resume; polling only runs while resumed. */
+    fun onHomeResumed(isResumed: Boolean) {
+        resumed = isResumed
+        if (isResumed) refreshInputs()
+        updatePolling()
+    }
+
+    private fun updatePolling() {
+        pollJob?.cancel()
+        pollJob = null
+        if (!level2Focused || !resumed) return
+        pollJob = viewModelScope.launch {
+            while (isActive) {
+                delay(INPUTS_POLL_MS)
+                refreshInputs()
+            }
+        }
+    }
+
+    /** Switches the TV; [onFailed] gets the input's display name on failure. */
+    fun selectInput(input: BraviaRpc.HdmiInput, onFailed: (String) -> Unit) {
+        viewModelScope.launch {
+            val r = runCatching { container.braviaControl.setInputUri(input.uri) }.getOrNull()
+            if (r is BraviaControl.Result.Ok) {
+                val cur = _inputs.value
+                if (cur is InputsUiState.Ready) _inputs.value = cur.copy(activeUri = input.uri)
+            } else {
+                onFailed(input.displayName)
+                if (r is BraviaControl.Result.WrongKey) _inputs.value = InputsUiState.WrongKey
+            }
+        }
+    }
+
+    // ---- v6: media history ----
+
+    /** History cards with saved art path + installed app (for the icon fallback / launch). */
+    val history: StateFlow<List<HomeHistoryItem>> =
+        combine(container.mediaHistory.entries, container.appsRepository.apps) { entries, apps ->
+            val byPkg = apps.associateBy { it.packageName }
+            entries.map { e ->
+                HomeHistoryItem(e, container.mediaHistory.artFileOf(e)?.absolutePath, byPkg[e.packageName])
+            }
+        }.flowOn(Dispatchers.IO).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun removeHistory(e: HistoryEntry) {
+        viewModelScope.launch { runCatching { container.mediaHistory.remove(e) } }
+    }
+
+    // ---- v6: tint from the focused app ----
+
+    private val tintCache = AppTintCache()
+    private val _focusTint = MutableStateFlow<Int?>(null)
+    /** ARGB of the focused app's dominant colour; null = fall back to the theme colour. */
+    val focusTint: StateFlow<Int?> = _focusTint.asStateFlow()
+    private var tintJob: Job? = null
+
+    fun onAppFocused(app: AppEntry?) {
+        tintJob?.cancel()
+        if (app == null) {
+            _focusTint.value = null
+            return
+        }
+        tintJob = viewModelScope.launch {
+            _focusTint.value = runCatching { tintCache.colorFor(app) }.getOrNull()
+        }
+    }
+
     class Factory(private val container: AppContainer) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T = HomeViewModel(container) as T
+    }
+
+    private companion object {
+        const val INPUTS_POLL_MS = 30_000L
     }
 }

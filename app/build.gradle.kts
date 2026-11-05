@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    // Test-only: renders Home/drawer/ambient screenshots on the JVM (never in the APK).
+    alias(libs.plugins.paparazzi)
 }
 
 // APP_VERSION in PatchNotes.kt is the single version source.

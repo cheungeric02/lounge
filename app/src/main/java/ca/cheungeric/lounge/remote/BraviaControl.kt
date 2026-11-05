@@ -100,6 +100,44 @@ class BraviaControl(context: Context) {
         return if (r is Reply.Ok) Result.Ok().also { afterOk() } else map(r)
     }
 
+    /** Outcome of [inputs]. */
+    sealed interface InputsResult {
+        /** [activeUri] is what the TV shows now; null when unknown or not an input. */
+        data class Ok(val inputs: List<BraviaRpc.HdmiInput>, val activeUri: String?) : InputsResult
+        data object NotConfigured : InputsResult
+        data object WrongKey : InputsResult
+        data object Unreachable : InputsResult
+        data class Error(val message: String) : InputsResult
+    }
+
+    /** HDMI inputs (v1.1, falling back to 1.0) plus the playing uri (a failure there → null). */
+    suspend fun inputs(): InputsResult {
+        if (!isConfigured) return InputsResult.NotConfigured
+        var r = call(BraviaRpc.SERVICE_AV_CONTENT, BraviaRpc.getCurrentExternalInputsStatus("1.1"))
+        if (r is Reply.Error) r = call(BraviaRpc.SERVICE_AV_CONTENT, BraviaRpc.getCurrentExternalInputsStatus("1.0"))
+        if (r !is Reply.Ok) {
+            return when (val m = map(r)) {
+                Result.WrongKey -> InputsResult.WrongKey
+                Result.Unreachable -> InputsResult.Unreachable
+                Result.NotConfigured -> InputsResult.NotConfigured
+                is Result.Error -> InputsResult.Error(m.message)
+                is Result.Ok -> InputsResult.Error("error")
+            }
+        }
+        val list = BraviaRpc.hdmiInputsOf(r.result)
+        val playing = call(BraviaRpc.SERVICE_AV_CONTENT, BraviaRpc.getPlayingContentInfo())
+        val active = (playing as? Reply.Ok)?.let { BraviaRpc.playingUriOf(it.result) }
+        afterOk()
+        return InputsResult.Ok(list, active)
+    }
+
+    /** Switches to the HDMI input [uri] (must start with `extInput:hdmi`). */
+    suspend fun setInputUri(uri: String): Result {
+        if (!uri.startsWith(BraviaRpc.HDMI_PREFIX)) return Result.Error("bad input")
+        val r = call(BraviaRpc.SERVICE_AV_CONTENT, BraviaRpc.setPlayContent(uri))
+        return if (r is Reply.Ok) Result.Ok().also { afterOk() } else map(r)
+    }
+
     private fun map(r: Reply?): Result {
         lastOk = false
         return when (r) {

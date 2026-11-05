@@ -4,18 +4,23 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.zIndex
 import ca.cheungeric.lounge.ui.theme.LoungeColors
 import ca.cheungeric.lounge.ui.theme.LoungeFocus
+
+/** Ring colour for [springFocus]; Home provides the focused app's tint (v6), elsewhere the theme ring. */
+internal val LocalFocusRingColor = compositionLocalOf { LoungeColors.FocusRing }
 
 /**
  * M3-Expressive spring focus: scale 1.0 -> 1.1 (dampingRatio 0.6, stiffness medium-low) and a
@@ -33,6 +38,7 @@ internal fun Modifier.springFocus(focused: Boolean, cornerRadius: Dp?): Modifier
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "focusRing",
     )
+    val ringColor: Color = LocalFocusRingColor.current
     this
         .zIndex(if (focused) 1f else 0f)
         .graphicsLayer {
@@ -47,7 +53,7 @@ internal fun Modifier.springFocus(focused: Boolean, cornerRadius: Dp?): Modifier
                 val out = LoungeFocus.RingOffset.toPx() + stroke / 2f
                 val r = if (cornerRadius == null) size.minDimension / 2f + out else cornerRadius.toPx() + out
                 drawRoundRect(
-                    color = LoungeColors.FocusRing,
+                    color = ringColor,
                     topLeft = Offset(-out, -out),
                     size = Size(size.width + out * 2, size.height + out * 2),
                     cornerRadius = CornerRadius(r, r),

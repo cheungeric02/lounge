@@ -1,7 +1,7 @@
 package ca.cheungeric.lounge.ui.patchnotes
 
 /** Integer build number. Single source of truth: Gradle reads this line for versionCode/versionName. */
-const val APP_VERSION = 5
+const val APP_VERSION = 6
 
 data class PatchNote(
     val v: Int,
@@ -12,6 +12,19 @@ data class PatchNote(
 
 /** Newest first. Add an entry every release and bump [APP_VERSION]. */
 val PATCH_NOTES = listOf(
+    PatchNote(
+        6,
+        "2026-11-05",
+        "A calmer Home",
+        listOf(
+            "Minimal Home: a big clock, the date and weather over a James Webb photo, with your favourites in one row. Pick the photo and how dim it is in Settings → Background.",
+            "Press Down for your TV's HDMI inputs (see what's connected and switch with OK) and what you've recently watched.",
+            "The All apps tile at the end of the row opens every app in a full-screen grid. Back closes it.",
+            "A Continue card picks up the last thing you watched. Hold OK on it to remove it from history.",
+            "Colours follow the app you're on: the focus ring and a soft glow take on its colour.",
+            "The ambient screen now slowly drifts across a dimmed Webb photo. Black is still available in Settings → Ambient screen.",
+        ),
+    ),
     PatchNote(
         5,
         "2026-11-05",

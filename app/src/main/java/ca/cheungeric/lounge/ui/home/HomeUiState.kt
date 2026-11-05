@@ -14,7 +14,6 @@ import kotlin.math.roundToInt
 data class HomeUiState(
     val home: HomeState,
     val weather: Weather?,
-    val showContinueWatching: Boolean = false,
 )
 
 /** Condition glyph drawn by WeatherIcon. */

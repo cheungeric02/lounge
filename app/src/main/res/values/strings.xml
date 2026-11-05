@@ -8,7 +8,7 @@
     <string name="home_continue_watching">Continue watching</string>
     <string name="home_favorites">Favorites</string>
     <string name="home_all_apps">All apps</string>
-    <string name="home_footer_hint">Hold OK on any tile to move, favorite or hide it</string>
+    <string name="home_footer_hint">Down for inputs &amp; recently watched · hold OK for options</string>
     <string name="home_no_favorites_hint">Hold OK on an app to add it to favorites</string>
     <string name="home_no_apps">No apps found</string>
     <!-- T4: launching, sheet, banners, settings -->
@@ -96,5 +96,36 @@
     <string name="settings_ambient">Ambient screen</string>
     <string name="settings_ambient_off">Off</string>
     <string name="settings_ambient_minutes">%1$d min</string>
-    <string name="settings_ambient_desc">After Home sits idle, show a black screen with a dim clock and weather. Any button wakes it.</string>
+    <string name="settings_ambient_desc">After Home sits idle, show a dim clock and weather over a slowly drifting photo (or plain black). Any button wakes it.</string>
+    <!-- v6: minimal Home, inputs, history, background -->
+    <string name="home_inputs">Inputs</string>
+    <string name="home_recently_watched">Recently watched</string>
+    <string name="home_history_meta">%1$s · %2$s</string>
+    <string name="home_history_access_hint">Turn on Notification access to see what you\'ve watched</string>
+    <string name="sheet_remove_history">Remove from history</string>
+    <string name="input_hdmi">HDMI %1$d</string>
+    <string name="input_connected">%1$s · Connected</string>
+    <string name="input_disconnected">%1$s · Nothing connected</string>
+    <string name="input_now_showing">Now showing</string>
+    <string name="inputs_set_up">Set up TV control</string>
+    <string name="inputs_wrong_key">TV key rejected – check Settings</string>
+    <string name="inputs_unreachable">TV not reachable</string>
+    <string name="inputs_retry">Select to try again</string>
+    <string name="inputs_none">No HDMI inputs found</string>
+    <string name="inputs_loading">Loading inputs</string>
+    <string name="input_switch_failed">Couldn\'t switch to %1$s</string>
+    <string name="settings_background">Background</string>
+    <string name="settings_bg_photo">Photo</string>
+    <string name="settings_bg_cliffs">Cosmic Cliffs</string>
+    <string name="settings_bg_pillars">Pillars of Creation</string>
+    <string name="settings_bg_deep">Deep Field</string>
+    <string name="settings_bg_black">Black</string>
+    <string name="settings_bg_dim">Dim</string>
+    <string name="settings_bg_dim_light">Light</string>
+    <string name="settings_bg_dim_medium">Medium</string>
+    <string name="settings_bg_dim_strong">Strong</string>
+    <string name="settings_ambient_style">Style</string>
+    <string name="settings_ambient_style_webb">Webb photo</string>
+    <string name="settings_ambient_style_black">Black</string>
+    <string name="settings_about_photos">Background photos: NASA, ESA, CSA, STScI (ESA/Webb, CC BY 4.0)</string>
 </resources>

@@ -6,6 +6,7 @@ Android TV home-screen app. Kotlin 2.0 + Jetpack Compose + androidx.tv material,
 - Build: `./gradlew assembleDebug` (release: `assembleRelease`)
 - Test: `./gradlew testDebugUnitTest`
 - Lint: `./gradlew lintDebug`
+- Screenshots: `./gradlew recordPaparazziDebug` (Paparazzi, test-only; PNGs in `app/src/test/snapshots/images/`)
 - Toolchain is per-user: `JAVA_HOME=%LOCALAPPDATA%\Programs\jdk-17`, SDK at `%LOCALAPPDATA%\Android\Sdk` (in `local.properties`, gitignored).
 
 ## Rules

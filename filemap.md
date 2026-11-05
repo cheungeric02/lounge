@@ -20,16 +20,18 @@
 - `app/src/main/res/xml/home_button_service.xml` — accessibility service config (window state + view focus/text events, key filtering, interactive windows, window content for phone typing)
 - `app/src/main/res/drawable/banner.xml`, `ic_launcher.xml` — placeholder "L" TV banner (320x180) + icon
 - `app/src/main/res/values/` — strings, colors, window theme
-- `app/src/main/java/ca/cheungeric/lounge/MainActivity.kt` — launcher activity: in-memory Home|Settings nav + Back, tile sheet, What's New gate, app launching + 3 s snack, update banner / home-button tip (lounge_prefs `lounge_homeTipDismissed`), weather refresh while STARTED, remoteBridge acquire/release in onStart/onStop, onNewIntent → Home, Now Playing access state refreshed on create/resume; v5 idle → AmbientScreen overlay over Home (dispatchKeyEvent: any key dismisses + is consumed incl. its UP; idle loop while RESUMED, blocked by Settings/sheet/What's New; lounge_prefs `lounge_ambientMinutes`)
+- `app/src/main/java/ca/cheungeric/lounge/MainActivity.kt` — v6: background settings (BackgroundPrefs), All apps drawer state, history sheet, records media history from its MediaWatcher, inputs refresh/poll pause on resume/pause; launcher activity: in-memory Home|Settings nav + Back, tile sheet, What's New gate, app launching + 3 s snack, update banner / home-button tip (lounge_prefs `lounge_homeTipDismissed`), weather refresh while STARTED, remoteBridge acquire/release in onStart/onStop, onNewIntent → Home, Now Playing access state refreshed on create/resume; v5 idle → AmbientScreen overlay over Home (dispatchKeyEvent: any key dismisses + is consumed incl. its UP; idle loop while RESUMED, blocked by Settings/sheet/What's New; lounge_prefs `lounge_ambientMinutes`)
 - `app/src/main/java/ca/cheungeric/lounge/LoungeApp.kt` — Application; builds AppContainer
-- `app/src/main/java/ca/cheungeric/lounge/AppContainer.kt` — manual DI container (repos, layoutPrefs, appScope, updateManager, remoteBridge)
+- `app/src/main/java/ca/cheungeric/lounge/AppContainer.kt` — manual DI container (repos, layoutPrefs, appScope, updateManager, remoteBridge, braviaControl, v6 mediaHistory)
 - `app/src/main/java/ca/cheungeric/lounge/data/` — data layer:
   - `AppEntry.kt` — app model
   - `AppsRepository.kt` — PackageManager query (leanback ∪ launcher, dedupe, banner/icon), package-change receiver, `start()/stop()/refresh()`, `apps` StateFlow
   - `LayoutPrefs.kt` — DataStore "lounge_layout" (+ LayoutPrefsState, StringListCodec JSON lists)
   - `HomeLayout.kt` — pure `build` + transforms (initDefaults, toggleFavorite, hide/unhide, moveLeft/Right, moveFavoriteTo), `DEFAULT_FAVORITES`, HomeState
+  - `MediaHistory.kt` — v6 pure history: HistoryEntry (@Serializable), upsert (dedupe, 12 max, 30 s write throttle), remove, evicted/orphan art, artFileName, encode/decode, relativeAge
+  - `MediaHistoryStore.kt` — v6 lounge_prefs `lounge_mediaHistory` + art PNGs in filesDir/media_art (≤400 px wide), entries StateFlow, record/remove/cleanOrphans; AppContainer.mediaHistory
   - `WeatherRepository.kt` — Open-Meteo fetch + DataStore "lounge_weather" cache + `startAutoRefresh`; Weather, WeatherParser, WeatherCodes (WMO → WeatherDescription/WeatherIconKey)
-- `app/src/test/java/ca/cheungeric/lounge/data/` — HomeLayoutTest, WeatherTest
+- `app/src/test/java/ca/cheungeric/lounge/data/` — HomeLayoutTest, WeatherTest, v6 MediaHistoryTest
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService; holds a RemoteBridge ref while connected; static `loungeIntent()` + `performBack()` hooks; v3: tracks the focused editable (never password) field into TvInput, `isRunning()`, `setText()` (ACTION_SET_TEXT), `submit()` (ACTION_IME_ENTER, API 30+); v5 `dpad(key)` (GLOBAL_ACTION_DPAD_*, API 33+), `sleepBox()` (LOCK_SCREEN), `isKeysSupported()`; v4: `armProfilePick()` polls YouTube's "Who's watching?" screen for 25 s and clicks the phone's profile
 - `app/src/main/java/ca/cheungeric/lounge/home/AmbientDreamService.kt` — v5 system screensaver "Lounge Ambient" (non-interactive, fullscreen, screen not bright); own Lifecycle/SavedState owners for a ComposeView rendering AmbientScreen; weather auto-refresh while dreaming
 - `app/src/main/java/ca/cheungeric/lounge/home/MediaAccessService.kt` — empty NotificationListenerService; its grant unlocks MediaSessionManager.getActiveSessions
@@ -40,26 +42,35 @@
 - `app/src/main/java/ca/cheungeric/lounge/update/` — UpdateChecker (+ VersionInfo, parseVersionInfo, isNewer), UpdateState, UpdateManager (StateFlow, checkNow/install/daily auto-check, process-wide UpdateStatus), UpdateInstaller (+ sha256Hex/sha256Matches; download, verify, PackageInstaller session), InstallStatusReceiver
 - `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeTheme.kt` — LoungeColors/LoungeShapes/LoungeFocus tokens + LoungeTheme (typography 400/500, shapes)
 - `app/src/main/java/ca/cheungeric/lounge/ui/home/` — Home UI (T3):
-  - `HomeScreen.kt` — stateless HomeScreen(state, onAppClick, onAppLongPress, onSettingsClick, topContent); initial focus + Up-to-settings
+  - `HomeScreen.kt` — v6 stateless "Minimal dock" HomeScreen: Webb backdrop + focus-tint glow (LocalFocusRingColor), level 1 (big clock/date/weather, now playing + settings, topContent, dock row [Continue] + favourites + All apps tile, footer), level 2 page (HomeLevel2: Inputs + Recently watched), All apps drawer overlay; initial focus + Up-to-settings
   - `HomeUiState.kt` — HomeUiState, WeatherDisplay/WeatherGlyph, weatherDisplayOf/wmoCondition (derived from data.WeatherCodes via glyphOf)
-  - `HomeViewModel.kt` — LayoutStore interface, HomeLogic (pure: combine apps+prefs+weather, initDefaults once, edits), HomeViewModel + Factory
+  - `HomeViewModel.kt` — LayoutStore interface, HomeLogic (pure: combine apps+prefs+weather, initDefaults once, edits), HomeViewModel + Factory; v6 inputs StateFlow (refresh on resume / first level-2 focus, 30 s poll while level 2 focused and resumed), selectInput, history items, removeHistory, focusTint/onAppFocused
+  - `HomeInputs.kt` — v6 InputsUiState (pure `of(InputsResult)`), InputsRow (HDMI tiles: green connected dot, "Now showing" chip, dim when disconnected; status tiles for set up / wrong key / unreachable / loading), shared TileSurface
+  - `HomeHistory.kt` — v6 HomeHistoryItem, ContinueCard (level 1), RecentlyWatchedRow + Notification-access hint card (level 2)
+  - `AllAppsDrawer.kt` — v6 pure `drawerApps(home)`, AllAppsTile (dots glyph), AllAppsDrawer (full-screen 6-column grid, focus trapped, Back closes)
+  - `IconTint.kt` — v6 pure `dominantColor(pixels)` (hue buckets, ignores grey/dark/light/transparent)
+  - `IconTintLoader.kt` — v6 AppTintCache: banner/icon → 24×24 pixels → dominantColor, cached per package
   - `HomeBanners.kt` — UpdateBanner + HomeButtonTip tonal cards (Home topContent)
-  - `ClockFormat.kt` / `ClockHeader.kt` — pure 12-hour clock/date formatting + minute-aligned ticking header
+  - `ClockFormat.kt` / `ClockHeader.kt` — pure 12-hour clock/date formatting + minute-aligned ticking header; v6 BigClockHeader (1.3× clock + date + weather line)
   - `WeatherCard.kt` — weather pill + round SettingsButton
   - `NowPlayingPill.kt` — v3 HomeNowPlaying (pure `of(session, art)`) + non-focusable header pill (art, ▶/❚❚, title, app); MainActivity feeds it from its own MediaWatcher while STARTED
   - `AppRow.kt` / `AppTile.kt` — LazyRow with focusRestorer, TileSize, banner/icon tiles with click + long-press
-  - `FocusRing.kt` — Modifier.springFocus (1.1x spring scale + 3dp ring at 3dp offset)
+  - `FocusRing.kt` — Modifier.springFocus (1.1x spring scale + 3dp ring at 3dp offset); v6 LocalFocusRingColor
   - `Glyphs.kt` — Canvas gear + weather icons (no icon library)
-  - `ContinueWatchingPlaceholder.kt` — dashed placeholder cards (dev flag)
   - `HomePreviews.kt` — TV_1080p previews with fake data
+- `app/src/main/java/ca/cheungeric/lounge/ui/background/` — v6 backgrounds:
+  - `BackgroundPrefs.kt` — BgImage (cliffs/pillars/deep/black), AmbientStyle (webb/black), BackgroundSettings, lounge_prefs `lounge_bgImage` / `lounge_bgDim` (30/50/70) / `lounge_ambientStyle` read/write + pure parsers
+  - `WebbBackground.kt` — one-entry decoded photo cache (inSampleSize 2), WebbBackdrop (photo + dim scrim + bottom gradient + radial tint glow), KenBurnsBackdrop (ambient drift)
+- `app/src/main/res/drawable-nodpi/webb_cosmic_cliffs.jpg`, `webb_pillars.jpg`, `webb_deep_field.jpg` — v6 Webb photos (NASA, ESA, CSA, STScI; CC BY 4.0)
+- `app/src/test/java/ca/cheungeric/lounge/ui/background/BackgroundPrefsTest.kt` — v6 prefs parsing
 - `app/src/main/java/ca/cheungeric/lounge/ui/ambient/` — v5 ambient screen:
-  - `AmbientScreen.kt` — pure #000 screen, dim 12-hour clock + date + weather text, minute-aligned redraw, block moved per minute inside a 5% safe area
+  - `AmbientScreen.kt` — v6 optional drifting Webb photo (KenBurnsBackdrop) or pure #000 screen, dim 12-hour clock + date + weather text, minute-aligned redraw, block moved per minute inside a 5% safe area
   - `AmbientLayout.kt` — pure burn-in `offsetFor(minuteIndex, freeW, freeH)` (SplitMix64, alternating parity so it always moves)
   - `AmbientIdle.kt` — pure idle decision (Off/Blocked/Wait/Show), OPTIONS 0/5/10/30, default 10, pref key `lounge_ambientMinutes` (lounge_prefs)
 - `app/src/test/java/ca/cheungeric/lounge/ui/ambient/AmbientTest.kt` — AmbientLayout + AmbientIdle tests
 - `app/src/main/java/ca/cheungeric/lounge/ui/theme/LoungeButton.kt` — shared pill button with spring focus
-- `app/src/main/java/ca/cheungeric/lounge/ui/edit/TileActionSheet.kt` — hold-OK dialog (TileAction: move, favorite, hide, app info, cancel)
-- `app/src/main/java/ca/cheungeric/lounge/ui/settings/SettingsScreen.kt` — Settings sections (home button + manual steps, phone remote [On/Off, QR + key + short URL, status, Now Playing access row (Granted/Not granted, Open, manual steps), New key confirm, Home-off note], v5 Ambient screen [Off / 5 / 10 / 30 min], v5 TV power control [Bravia IP + Pre-Shared Key text fields (key masked when unfocused, not a password field), Save, Test connection result, setup steps; BraviaTestState], updates + status text, hidden apps, patch notes, about)
+- `app/src/main/java/ca/cheungeric/lounge/ui/edit/TileActionSheet.kt` — hold-OK dialog (TileAction: move, favorite, hide, app info, cancel); v6 HistoryActionSheet (Remove from history / Cancel), shared SheetFrame
+- `app/src/main/java/ca/cheungeric/lounge/ui/settings/SettingsScreen.kt` — Settings sections (home button + manual steps, phone remote [On/Off, QR + key + short URL, status, Now Playing access row (Granted/Not granted, Open, manual steps), New key confirm, Home-off note], v6 Background [Photo, Dim], v5 Ambient screen [Off / 5 / 10 / 30 min; v6 Style Webb/Black], v5 TV power control [Bravia IP + Pre-Shared Key text fields (key masked when unfocused, not a password field), Save, Test connection result, setup steps; BraviaTestState], updates + status text, hidden apps, patch notes, about + v6 photo credit)
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotes.kt` — APP_VERSION (version source), PatchNote, PATCH_NOTES
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/WhatsNew.kt` — WhatsNewGate (pure), WhatsNewStore (lounge_prefs / lounge_lastSeenVer, captureFreshInstall), checkWhatsNew
 - `app/src/main/java/ca/cheungeric/lounge/ui/patchnotes/PatchNotesUi.kt` — PatchNoteEntry (shared renderer), PatchNotesList (Settings), WhatsNewDialog
@@ -69,8 +80,8 @@
   - `SseParser.kt` — pure incremental Firebase REST stream parser (SseEvent: Put/Patch/KeepAlive/Cancel/AuthRevoked)
   - `FirebaseRest.kt` — RemoteDb interface + HttpURLConnection impl (get/put/patch/delete/stream, 307 follow, Date-header clock offset, `urlFor` guard: only `lounge/<validKey>[/…]`)
   - `RemoteCommand.kt` — pure command parse/freshness (30 s), pkgKey helpers, childrenOf(stream event); v3 media/volume/sleep/open/text/submit; v4 launch `profile`; v5 power/input/key (key uses KEY_FRESH_MS = 3 s)
-  - `BraviaRpc.kt` — v5 pure Sony Bravia JSON-RPC bodies (getPowerStatus, setPowerStatus, setPlayContent HDMI, getSystemInformation), reply parsing (Ok / WrongKey on 401/403/40005 / Error), power state, MAC parse, Wake-on-LAN magic packet, IPv4 + /24 broadcast helpers
-  - `BraviaControl.kt` — v5 Bravia IP control IO (HttpURLConnection 3 s, X-Auth-PSK, never logs the PSK; WoL UDP broadcast); config lounge_prefs `lounge_braviaIp` (default 192.168.2.32) / `lounge_braviaPsk` / cached `lounge_braviaMac`; Result Ok/WrongKey/Unreachable/NotConfigured/Error; process-wide via AppContainer.braviaControl
+  - `BraviaRpc.kt` — v6 HdmiInput + hdmiInputsOf/playingUriOf parsers, setPlayContent(uri); v5 pure Sony Bravia JSON-RPC bodies (getPowerStatus, setPowerStatus, setPlayContent HDMI, getSystemInformation), reply parsing (Ok / WrongKey on 401/403/40005 / Error), power state, MAC parse, Wake-on-LAN magic packet, IPv4 + /24 broadcast helpers
+  - `BraviaControl.kt` — v6 InputsResult + inputs() (getCurrentExternalInputsStatus 1.1→1.0, getPlayingContentInfo) + setInputUri; v5 Bravia IP control IO (HttpURLConnection 3 s, X-Auth-PSK, never logs the PSK; WoL UDP broadcast); config lounge_prefs `lounge_braviaIp` (default 192.168.2.32) / `lounge_braviaPsk` / cached `lounge_braviaMac`; Result Ok/WrongKey/Unreachable/NotConfigured/Error; process-wide via AppContainer.braviaControl
   - `ProfilePicker.kt` — v4 pure profile auto-pick: picker-screen detection, name matching, click target on an accessibility snapshot
   - `RemotePayloads.kt` — pure tv/status (+mediaAccess, typing; v5 keys, power), v5 tv/power, tv/apps, tv/layout, tv/volume, tv/sleep JSON builders + sha1/PNG/JPEG data-URI
   - `NowPlaying.kt` — pure Now Playing: session choice, positionAt extrapolation, seek clamp, republish check, tv/nowPlaying payload, art fitWithin
@@ -80,8 +91,9 @@
   - `TvInput.kt` — InputSnapshot + process-wide focused-field StateFlow (HomeButtonService → bridge) + tv/input payload
   - `RemoteBridge.kt` — process-wide ref-counted bridge (AppContainer.remoteBridge): prefs lounge_remoteEnabled/lounge_remoteKey, setEnabled/regenerateKey, key + status StateFlows, publishes status/apps/layout/icons, consumes cmd/, backoff 2→60 s; v3 publishes tv/nowPlaying + tv/art, tv/volume, tv/input, tv/sleep; handles media/volume/sleep/open/text/submit; v5 handles power/input/key (Bravia calls run off the command queue, serialized), publishes tv/power (15 s poll, deleted when Bravia isn't configured/working)
 - `app/src/main/res/xml/network_security_config.xml` — v5: cleartext allowed (only the LAN Bravia uses http); referenced from the manifest `<application>`
-- `app/src/test/java/ca/cheungeric/lounge/remote/` — BraviaRpc, SseParser, RemoteCommand, RemoteKey (+ path guard, WordList), RemotePayloads, NowPlaying, LinkRouter, SleepTimer, TvInput, ProfilePicker tests; `data/MoveFavoriteToTest.kt`
+- `app/src/test/java/ca/cheungeric/lounge/remote/` — v6 BraviaInputsTest, BraviaRpc, SseParser, RemoteCommand, RemoteKey (+ path guard, WordList), RemotePayloads, NowPlaying, LinkRouter, SleepTimer, TvInput, ProfilePicker tests; `data/MoveFavoriteToTest.kt`
 - `app/src/main/java/ca/cheungeric/lounge/remote/qr/QrEncoder.kt` — pure-Kotlin QR encoder (byte mode UTF-8, level M, v1–6, GF(256) Reed–Solomon, 8-mask penalty) + QrMatrix
 - `app/src/main/java/ca/cheungeric/lounge/remote/qr/QrCode.kt` — Composable QrCode(text): Canvas, black on white rounded card, 4-module quiet zone
 - `app/src/test/java/ca/cheungeric/lounge/remote/qr/` — QrEncoderTest + QrFixtures (segno-generated reference matrices)
-- `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests (data/, home/, update/, ui/patchnotes/, ui/home/ incl. HomeLogicTest)
+- `app/src/test/java/ca/cheungeric/lounge/screenshots/HomeScreenshots.kt` — v6 Paparazzi screenshots (Home, inputs+history, All apps, screensaver); `recordPaparazziDebug` → `app/src/test/snapshots/images/`
+- `app/src/test/java/ca/cheungeric/lounge/` — JVM unit tests (data/, home/, update/, ui/patchnotes/, ui/home/ incl. HomeLogicTest, v6 IconTintTest + DrawerAppsTest)

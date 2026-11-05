@@ -3,6 +3,7 @@ package ca.cheungeric.lounge
 import android.content.Context
 import ca.cheungeric.lounge.data.AppsRepository
 import ca.cheungeric.lounge.data.LayoutPrefs
+import ca.cheungeric.lounge.data.MediaHistoryStore
 import ca.cheungeric.lounge.data.WeatherRepository
 import ca.cheungeric.lounge.remote.BraviaControl
 import ca.cheungeric.lounge.remote.RemoteBridge
@@ -26,4 +27,7 @@ class AppContainer(val context: Context) {
 
     /** v5: Sony Bravia IP control (power / HDMI input) over the LAN. */
     val braviaControl: BraviaControl by lazy { BraviaControl(context) }
+
+    /** v6: "Continue" / "Recently watched" history recorded from media sessions. */
+    val mediaHistory: MediaHistoryStore by lazy { MediaHistoryStore(context) }
 }

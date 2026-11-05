@@ -21,3 +21,6 @@ keystore.properties
 .idea/
 *.iml
 .DS_Store
+
+# Paparazzi renders (clock changes every run; regenerate with recordPaparazziDebug)
+app/src/test/snapshots/

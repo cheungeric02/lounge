@@ -54,6 +54,32 @@ fun TileActionSheet(
     onAction: (TileAction) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    SheetFrame(app.label, onDismiss) { first ->
+        SheetRow(stringResource(R.string.sheet_move_left), Modifier.focusRequester(first)) {
+            onAction(TileAction.MoveLeft)
+        }
+        SheetRow(stringResource(R.string.sheet_move_right)) { onAction(TileAction.MoveRight) }
+        SheetRow(
+            stringResource(if (isFavorite) R.string.sheet_remove_favorite else R.string.sheet_add_favorite),
+        ) { onAction(TileAction.ToggleFavorite) }
+        SheetRow(stringResource(R.string.sheet_hide)) { onAction(TileAction.Hide) }
+        SheetRow(stringResource(R.string.sheet_app_info)) { onAction(TileAction.AppInfo) }
+        SheetRow(stringResource(R.string.sheet_cancel), onClick = onDismiss)
+    }
+}
+
+/** v6: hold-OK sheet for a Continue / Recently watched card: "Remove from history" or Cancel. */
+@Composable
+fun HistoryActionSheet(title: String, onRemove: () -> Unit, onDismiss: () -> Unit) {
+    SheetFrame(title, onDismiss) { first ->
+        SheetRow(stringResource(R.string.sheet_remove_history), Modifier.focusRequester(first), onClick = onRemove)
+        SheetRow(stringResource(R.string.sheet_cancel), onClick = onDismiss)
+    }
+}
+
+/** Dialog shell shared by the sheets: title, focus on the row given [content]'s requester, OK-swallow. */
+@Composable
+private fun SheetFrame(title: String, onDismiss: () -> Unit, content: @Composable (FocusRequester) -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         val first = remember { FocusRequester() }
         // The sheet opens while OK is still held (long-press). Swallow that press's auto-repeats and
@@ -81,23 +107,14 @@ fun TileActionSheet(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                app.label,
+                title,
                 style = MaterialTheme.typography.headlineSmall,
                 color = LoungeColors.OnSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 8.dp, bottom = 8.dp),
             )
-            SheetRow(stringResource(R.string.sheet_move_left), Modifier.focusRequester(first)) {
-                onAction(TileAction.MoveLeft)
-            }
-            SheetRow(stringResource(R.string.sheet_move_right)) { onAction(TileAction.MoveRight) }
-            SheetRow(
-                stringResource(if (isFavorite) R.string.sheet_remove_favorite else R.string.sheet_add_favorite),
-            ) { onAction(TileAction.ToggleFavorite) }
-            SheetRow(stringResource(R.string.sheet_hide)) { onAction(TileAction.Hide) }
-            SheetRow(stringResource(R.string.sheet_app_info)) { onAction(TileAction.AppInfo) }
-            SheetRow(stringResource(R.string.sheet_cancel), onClick = onDismiss)
+            content(first)
         }
     }
 }

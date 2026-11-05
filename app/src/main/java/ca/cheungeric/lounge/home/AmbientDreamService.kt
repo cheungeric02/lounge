@@ -2,6 +2,7 @@ package ca.cheungeric.lounge.home
 
 import android.service.dreams.DreamService
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.Lifecycle
@@ -17,12 +18,13 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import ca.cheungeric.lounge.LoungeApp
 import ca.cheungeric.lounge.ui.ambient.AmbientScreen
+import ca.cheungeric.lounge.ui.background.BackgroundPrefs
 import ca.cheungeric.lounge.ui.theme.LoungeTheme
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 
 /**
- * System screensaver "Lounge Ambient": the same pure-black [AmbientScreen]. Non-interactive, so
+ * System screensaver "Lounge Ambient": the same [AmbientScreen] (Webb or Black per Settings). Non-interactive, so
  * any key wakes the box and the system finishes the dream (the key is not delivered to apps).
  *
  * DreamService is not a LifecycleOwner, so it drives its own lifecycle for Compose:
@@ -69,7 +71,9 @@ class AmbientDreamService : DreamService(), LifecycleOwner, SavedStateRegistryOw
             setContent {
                 LoungeTheme {
                     val weather by repo.weather.collectAsStateWithLifecycle()
-                    AmbientScreen(weather)
+                    // v6: same Webb/Black choice as the in-app ambient screen (read once per dream).
+                    val photo = remember { BackgroundPrefs.read(this@AmbientDreamService).ambientPhoto }
+                    AmbientScreen(weather, photo = photo)
                 }
             }
         }

@@ -10,8 +10,11 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ca.cheungeric.lounge.data.AppEntry
+import ca.cheungeric.lounge.data.HistoryEntry
 import ca.cheungeric.lounge.data.HomeState
 import ca.cheungeric.lounge.data.Weather
+import ca.cheungeric.lounge.ui.background.BackgroundSettings
+import ca.cheungeric.lounge.ui.background.BgImage
 import ca.cheungeric.lounge.ui.theme.LoungeColors
 import ca.cheungeric.lounge.ui.theme.LoungeTheme
 
@@ -51,11 +54,28 @@ private fun HomeScreenPreview() {
 
 @Preview(device = Devices.TV_1080p, showBackground = true)
 @Composable
-private fun HomeScreenContinueWatchingPreview() {
+private fun HomeScreenContinuePreview() {
+    val now = 1_800_000_000_000L
+    val entry = HistoryEntry("com.netflix.ninja", "Netflix", "The Expanse", "S3 · E4", null, now - 2 * 3_600_000L)
     LoungeTheme {
         HomeScreen(
-            state = HomeUiState(HomeState(previewFavorites, previewOthers), previewWeather, showContinueWatching = true),
+            state = HomeUiState(HomeState(previewFavorites, previewOthers), previewWeather),
             onAppClick = {}, onAppLongPress = {}, onSettingsClick = {},
+            background = BackgroundSettings(image = BgImage.Black),
+            level2 = HomeLevel2(history = listOf(HomeHistoryItem(entry, app = previewFavorites[2])), nowMs = now),
+        )
+    }
+}
+
+@Preview(device = Devices.TV_1080p, showBackground = true)
+@Composable
+private fun AllAppsDrawerPreview() {
+    LoungeTheme {
+        AllAppsDrawer(
+            apps = drawerApps(HomeState(previewFavorites, previewOthers)),
+            image = BgImage.Black,
+            dim = 50,
+            onAppClick = {}, onAppLongPress = {}, onClose = {},
         )
     }
 }

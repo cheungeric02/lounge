@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
@@ -31,12 +32,13 @@ object BraviaRpc {
         data class Error(val code: Int, val message: String) : Reply
     }
 
-    private fun request(method: String, id: Int, param: JsonObject?): String = buildJsonObject {
-        put("method", method)
-        put("id", id)
-        putJsonArray("params") { if (param != null) add(param) }
-        put("version", "1.0")
-    }.toString()
+    private fun request(method: String, id: Int, param: JsonObject?, version: String = "1.0"): String =
+        buildJsonObject {
+            put("method", method)
+            put("id", id)
+            putJsonArray("params") { if (param != null) add(param) }
+            put("version", version)
+        }.toString()
 
     fun getPowerStatus(): String = request("getPowerStatus", 50, null)
 
@@ -46,8 +48,54 @@ object BraviaRpc {
     /** `port` 1..4 → `extInput:hdmi?port=N`. */
     fun setPlayContent(port: Int): String {
         require(port in 1..4) { "port out of range" }
-        return request("setPlayContent", 101, buildJsonObject { put("uri", "extInput:hdmi?port=$port") })
+        return setPlayContent("extInput:hdmi?port=$port")
     }
+
+    /** Switches to an HDMI input by its full uri; only `extInput:hdmi…` uris are accepted. */
+    fun setPlayContent(uri: String): String {
+        require(uri.startsWith(HDMI_PREFIX)) { "not an HDMI uri" }
+        return request("setPlayContent", 101, buildJsonObject { put("uri", uri) })
+    }
+
+    /** Lists external inputs with labels + connection state (avContent; v1.1, older sets 1.0). */
+    fun getCurrentExternalInputsStatus(version: String = "1.1"): String =
+        request("getCurrentExternalInputsStatus", 105, null, version)
+
+    /** What the TV is showing now (avContent). */
+    fun getPlayingContentInfo(): String = request("getPlayingContentInfo", 103, null)
+
+    const val HDMI_PREFIX = "extInput:hdmi"
+
+    /** One HDMI input from getCurrentExternalInputsStatus. */
+    data class HdmiInput(
+        val uri: String,
+        val port: Int,
+        val title: String,
+        val label: String,
+        val connected: Boolean,
+    ) {
+        /** The user's TV label, else Sony's title, else "HDMI N". */
+        val displayName: String
+            get() = label.trim().ifBlank { title.trim().ifBlank { "HDMI $port" } }
+    }
+
+    private val PORT = Regex("[?&]port=(\\d+)")
+
+    /** HDMI entries of `result[0]` (array of {uri,title,label,connection,…}), sorted by port. */
+    fun hdmiInputsOf(result: JsonArray): List<HdmiInput> {
+        val items = result.firstOrNull() as? JsonArray ?: return emptyList()
+        return items.mapNotNull { el ->
+            val o = el as? JsonObject ?: return@mapNotNull null
+            val uri = o.str("uri") ?: return@mapNotNull null
+            if (!uri.startsWith(HDMI_PREFIX)) return@mapNotNull null
+            val port = PORT.find(uri)?.groupValues?.get(1)?.toIntOrNull() ?: return@mapNotNull null
+            val connected = (o["connection"] as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull ?: false
+            HdmiInput(uri, port, o.str("title") ?: "", o.str("label") ?: "", connected)
+        }.sortedBy { it.port }
+    }
+
+    /** `result[0].uri` of getPlayingContentInfo, or null (e.g. TV apps / tuner). */
+    fun playingUriOf(result: JsonArray): String? = firstObject(result)?.str("uri")?.takeIf { it.isNotBlank() }
 
     fun getSystemInformation(): String = request("getSystemInformation", 33, null)
 

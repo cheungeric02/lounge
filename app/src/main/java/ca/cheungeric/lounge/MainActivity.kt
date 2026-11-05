@@ -20,11 +20,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -42,9 +44,14 @@ import ca.cheungeric.lounge.remote.MediaWatcher
 import ca.cheungeric.lounge.remote.NowPlaying
 import ca.cheungeric.lounge.ui.ambient.AmbientIdle
 import ca.cheungeric.lounge.ui.ambient.AmbientScreen
+import ca.cheungeric.lounge.ui.background.BackgroundPrefs
+import ca.cheungeric.lounge.ui.background.BackgroundSettings
+import ca.cheungeric.lounge.ui.edit.HistoryActionSheet
 import ca.cheungeric.lounge.ui.edit.TileAction
 import ca.cheungeric.lounge.ui.edit.TileActionSheet
 import ca.cheungeric.lounge.ui.home.HomeButtonTip
+import ca.cheungeric.lounge.ui.home.HomeHistoryItem
+import ca.cheungeric.lounge.ui.home.HomeLevel2
 import ca.cheungeric.lounge.ui.home.HomeNowPlaying
 import ca.cheungeric.lounge.ui.home.HomeScreen
 import ca.cheungeric.lounge.ui.home.HomeViewModel
@@ -78,6 +85,12 @@ class MainActivity : ComponentActivity() {
 
     private var screen by mutableStateOf(Screen.Home)
     private var sheetApp by mutableStateOf<AppEntry?>(null)
+    /** v6: hold-OK sheet for a Continue / Recently watched card. */
+    private var sheetHistory by mutableStateOf<HomeHistoryItem?>(null)
+    /** v6: All apps drawer over Home. */
+    private var allAppsOpen by mutableStateOf(false)
+    /** v6: Home / ambient background (Settings -> Background). */
+    private var background by mutableStateOf(BackgroundSettings())
     private var whatsNew by mutableStateOf<List<PatchNote>>(emptyList())
     private var snack by mutableStateOf<Snack?>(null)
     private var homeServiceEnabled by mutableStateOf(true)
@@ -106,7 +119,7 @@ class MainActivity : ComponentActivity() {
         val fresh = WhatsNewStore(this).captureFreshInstall()
         super.onCreate(savedInstanceState)
 
-        val vm = ViewModelProvider(this, HomeViewModel.Factory(container))[HomeViewModel::class.java]
+        val vm = homeVm()
         val updates = container.updateManager
         updates.start()
         val bridge = container.remoteBridge
@@ -118,13 +131,15 @@ class MainActivity : ComponentActivity() {
         homeServiceEnabled = HomeServiceStatus.isEnabled(this)
         mediaAccessGranted = MediaAccessStatus.isGranted(this)
         ambientMinutes = readAmbientMinutes()
+        background = BackgroundPrefs.read(this)
+        lifecycleScope.launch { runCatching { container.mediaHistory.cleanOrphans() } }
 
         // v5: idle → ambient overlay, only while resumed on plain Home (no Settings / sheet / dialog).
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 lastInputAt = SystemClock.uptimeMillis()
                 while (true) {
-                    val plainHome = screen == Screen.Home && sheetApp == null && whatsNew.isEmpty()
+                    val plainHome = screen == Screen.Home && sheetApp == null && sheetHistory == null && whatsNew.isEmpty()
                     when (val d = AmbientIdle.decide(ambientMinutes, lastInputAt, SystemClock.uptimeMillis(), plainHome)) {
                         AmbientIdle.Decision.Off, AmbientIdle.Decision.Blocked -> {
                             awaitIdleInputsChange(null)
@@ -160,6 +175,14 @@ class MainActivity : ComponentActivity() {
                         val chosen = if (r.access) NowPlaying.choose(r.sessions) else null
                         val art = chosen?.let { r.art[it.pkg] }?.let { runCatching { it.asImageBitmap() }.getOrNull() }
                         nowPlaying = HomeNowPlaying.of(chosen, art)
+                        // v6: remember what was played for Continue / Recently watched.
+                        if (r.access) {
+                            r.sessions.filter { it.isPlaying && it.title.isNotBlank() }.forEach { s ->
+                                runCatching {
+                                    container.mediaHistory.record(s.pkg, s.app, s.title, s.subtitle.ifBlank { null }, r.art[s.pkg])
+                                }
+                            }
+                        }
                     }
                     nowPlaying = null
                     delay(30_000)
@@ -178,6 +201,16 @@ class MainActivity : ComponentActivity() {
                 val updateState by updates.state.collectAsStateWithLifecycle()
                 val remoteKey by bridge.key.collectAsStateWithLifecycle()
                 val remoteStatus by bridge.status.collectAsStateWithLifecycle()
+                val inputs by vm.inputs.collectAsStateWithLifecycle()
+                val history by vm.history.collectAsStateWithLifecycle()
+                val focusTint by vm.focusTint.collectAsStateWithLifecycle()
+                // Ticks the "2 h ago" labels once a minute.
+                val nowMs by produceState(System.currentTimeMillis()) {
+                    while (true) {
+                        delay(60_000)
+                        value = System.currentTimeMillis()
+                    }
+                }
 
                 Box(Modifier.fillMaxSize().background(LoungeColors.Background)) {
                     when (screen) {
@@ -190,6 +223,27 @@ class MainActivity : ComponentActivity() {
                                 onSettingsClick = { screen = Screen.Settings },
                                 topContent = homeTopContent(updateState),
                                 nowPlaying = nowPlaying,
+                                background = background,
+                                focusTint = focusTint?.let { Color(it) },
+                                onAppFocused = vm::onAppFocused,
+                                level2 = HomeLevel2(
+                                    inputs = inputs,
+                                    history = history,
+                                    mediaAccessGranted = mediaAccessGranted,
+                                    nowMs = nowMs,
+                                    onInputClick = { input ->
+                                        vm.selectInput(input) { name -> showSnack(getString(R.string.input_switch_failed, name)) }
+                                    },
+                                    onInputsSetUp = { screen = Screen.Settings },
+                                    onInputsRetry = vm::refreshInputs,
+                                    onHistoryClick = ::launchHistory,
+                                    onHistoryLongPress = { sheetHistory = it },
+                                    onOpenMediaAccess = { MediaAccessStatus.openSettings(this@MainActivity) },
+                                    onFocused = vm::onLevel2Focused,
+                                ),
+                                allAppsOpen = allAppsOpen,
+                                onOpenAllApps = { allAppsOpen = true },
+                                onCloseAllApps = { allAppsOpen = false },
                             )
                         }
                         Screen.Settings -> {
@@ -236,6 +290,11 @@ class MainActivity : ComponentActivity() {
                                     ambientMinutes = AmbientIdle.normalize(m)
                                     writeAmbientMinutes(ambientMinutes)
                                 },
+                                background = background,
+                                onBackgroundChange = { b ->
+                                    background = b
+                                    BackgroundPrefs.write(this@MainActivity, b)
+                                },
                             )
                         }
                     }
@@ -258,7 +317,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     // Drawn over Home without taking focus, so the focused tile is kept for later.
-                    if (ambientShown) AmbientScreen(homeState.weather)
+                    if (ambientShown) AmbientScreen(homeState.weather, photo = background.ambientPhoto)
                 }
 
                 sheetApp?.let { app ->
@@ -277,6 +336,17 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onDismiss = { sheetApp = null },
+                    )
+                }
+
+                sheetHistory?.let { item ->
+                    HistoryActionSheet(
+                        title = item.entry.title,
+                        onRemove = {
+                            sheetHistory = null
+                            vm.removeHistory(item.entry)
+                        },
+                        onDismiss = { sheetHistory = null },
                     )
                 }
 
@@ -343,9 +413,12 @@ class MainActivity : ComponentActivity() {
         homeServiceEnabled = HomeServiceStatus.isEnabled(this)
         mediaAccessGranted = MediaAccessStatus.isGranted(this)
         container.appsRepository.refresh()
+        // v6: Home's HDMI tiles reflect the TV as it is now.
+        homeVm().onHomeResumed(true)
     }
 
     override fun onPause() {
+        homeVm().onHomeResumed(false)
         ambientShown = false
         swallowKeys.clear()
         HomeButtonService.setLoungeResumed(false)
@@ -360,6 +433,8 @@ class MainActivity : ComponentActivity() {
             ambientShown = false
             screen = Screen.Home
             sheetApp = null
+            sheetHistory = null
+            allAppsOpen = false
             whatsNew = emptyList()
         }
     }
@@ -392,7 +467,7 @@ class MainActivity : ComponentActivity() {
      */
     private suspend fun awaitIdleInputsChange(timeoutMs: Long?): Boolean =
         withTimeoutOrNull(timeoutMs ?: Long.MAX_VALUE) {
-            snapshotFlow { Triple(ambientMinutes, screen, sheetApp != null || whatsNew.isNotEmpty()) }
+            snapshotFlow { Triple(ambientMinutes, screen, sheetApp != null || sheetHistory != null || whatsNew.isNotEmpty()) }
                 .drop(1)
                 .first()
             true
@@ -407,6 +482,15 @@ class MainActivity : ComponentActivity() {
             false
         }
         if (!ok) showSnack(getString(R.string.cant_open_app, app.label))
+    }
+
+    private fun homeVm(): HomeViewModel =
+        ViewModelProvider(this, HomeViewModel.Factory(container))[HomeViewModel::class.java]
+
+    /** v6: resume a Continue / Recently watched item by opening its app. */
+    private fun launchHistory(item: HomeHistoryItem) {
+        val app = item.app ?: container.appsRepository.apps.value.firstOrNull { it.packageName == item.entry.packageName }
+        if (app != null) launchApp(app) else showSnack(getString(R.string.cant_open_app, item.entry.appLabel))
     }
 
     private fun openAppInfo(pkg: String) {

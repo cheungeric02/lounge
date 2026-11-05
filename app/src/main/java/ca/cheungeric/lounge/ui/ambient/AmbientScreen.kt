@@ -1,6 +1,7 @@
 package ca.cheungeric.lounge.ui.ambient
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import ca.cheungeric.lounge.data.Weather
+import ca.cheungeric.lounge.ui.background.BgImage
+import ca.cheungeric.lounge.ui.background.KenBurnsBackdrop
 import ca.cheungeric.lounge.ui.home.formatClock
 import ca.cheungeric.lounge.ui.home.millisUntilNextMinute
 import ca.cheungeric.lounge.ui.home.weatherDisplayOf
@@ -37,13 +40,20 @@ import kotlin.math.roundToInt
 private val AmbientPrimary = Color(0xFF5A5A5A)
 private val AmbientSecondary = Color(0xFF404040)
 
+/** Slightly brighter greys so the clock reads over the dimmed photo. */
+private val PhotoPrimary = Color(0xFF8A8A8A)
+private val PhotoSecondary = Color(0xFF6A6A6A)
+
 /**
- * Pure black (#000) idle screen: dim 12-hour clock, date and weather. Recomposes once a minute
- * (minute-aligned) and moves the block to a new pseudo-random spot each minute (burn-in shift).
- * No animations, images or gradients.
+ * Idle screen: dim 12-hour clock, date and weather. Recomposes once a minute (minute-aligned) and
+ * moves the block to a new pseudo-random spot each minute (burn-in shift). With [photo] (v6 "Webb"
+ * style) the background is that photo at ~30% brightness drifting slowly (Ken Burns); with null it
+ * is pure black (#000) with no animations, images or gradients.
  */
 @Composable
-fun AmbientScreen(weather: Weather?, modifier: Modifier = Modifier) {
+fun AmbientScreen(weather: Weather?, modifier: Modifier = Modifier, photo: BgImage? = null) {
+    val primary = if (photo != null) PhotoPrimary else AmbientPrimary
+    val secondary = if (photo != null) PhotoSecondary else AmbientSecondary
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -60,36 +70,39 @@ fun AmbientScreen(weather: Weather?, modifier: Modifier = Modifier) {
     }
     val minuteIndex = nowMs / 60_000L
 
-    Layout(
-        content = {
-            Column {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(clock.time, style = MaterialTheme.typography.displayLarge, color = AmbientPrimary)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        clock.suffix,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = AmbientSecondary,
-                        modifier = Modifier.padding(bottom = 12.dp),
-                    )
+    Box(modifier.fillMaxSize().background(Color.Black)) {
+        if (photo != null) KenBurnsBackdrop(photo)
+        Layout(
+            content = {
+                Column {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(clock.time, style = MaterialTheme.typography.displayLarge, color = primary)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            clock.suffix,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = secondary,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                        )
+                    }
+                    Text(clock.date, style = MaterialTheme.typography.titleLarge, color = secondary)
+                    if (weatherLine != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(weatherLine, style = MaterialTheme.typography.titleLarge, color = secondary)
+                    }
                 }
-                Text(clock.date, style = MaterialTheme.typography.titleLarge, color = AmbientSecondary)
-                if (weatherLine != null) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(weatherLine, style = MaterialTheme.typography.titleLarge, color = AmbientSecondary)
-                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        ) { measurables, constraints ->
+            val w = constraints.maxWidth
+            val h = constraints.maxHeight
+            val marginX = (w * AmbientLayout.SAFE_MARGIN_FRACTION).roundToInt()
+            val marginY = (h * AmbientLayout.SAFE_MARGIN_FRACTION).roundToInt()
+            val block = measurables.first().measure(Constraints(maxWidth = w, maxHeight = h))
+            val off = AmbientLayout.offsetFor(minuteIndex, w - 2 * marginX - block.width, h - 2 * marginY - block.height)
+            layout(w, h) {
+                block.place(marginX + off.x, marginY + off.y)
             }
-        },
-        modifier = modifier.fillMaxSize().background(Color.Black),
-    ) { measurables, constraints ->
-        val w = constraints.maxWidth
-        val h = constraints.maxHeight
-        val marginX = (w * AmbientLayout.SAFE_MARGIN_FRACTION).roundToInt()
-        val marginY = (h * AmbientLayout.SAFE_MARGIN_FRACTION).roundToInt()
-        val block = measurables.first().measure(Constraints(maxWidth = w, maxHeight = h))
-        val off = AmbientLayout.offsetFor(minuteIndex, w - 2 * marginX - block.width, h - 2 * marginY - block.height)
-        layout(w, h) {
-            block.place(marginX + off.x, marginY + off.y)
         }
     }
 }

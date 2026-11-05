@@ -45,6 +45,20 @@ internal fun GearGlyph(modifier: Modifier = Modifier, color: Color = LoungeColor
     }
 }
 
+/** 3×3 grid of dots ("All apps"). */
+@Composable
+internal fun DotsGlyph(modifier: Modifier = Modifier, color: Color = LoungeColors.OnSurface) {
+    Canvas(modifier) {
+        val step = size.minDimension / 3f
+        val r = step * 0.22f
+        val x0 = center.x - step
+        val y0 = center.y - step
+        for (row in 0 until 3) for (col in 0 until 3) {
+            drawCircle(color, radius = r, center = Offset(x0 + col * step, y0 + row * step))
+        }
+    }
+}
+
 @Composable
 internal fun WeatherIcon(glyph: WeatherGlyph, description: String, modifier: Modifier = Modifier) {
     Canvas(modifier.semantics { contentDescription = description }) {

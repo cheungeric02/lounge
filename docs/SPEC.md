@@ -32,6 +32,7 @@ A clean, ad-free custom home screen (launcher) for Eric's Android TV devices. Ad
 - Jetpack Compose (BOM 2024.12.01) + `androidx.tv:tv-material:1.0.0` + `androidx.tv:tv-foundation` not needed (use Compose foundation lazy rows).
 - DataStore Preferences 1.1.1 for settings; kotlinx-serialization-json 1.7.3 for JSON; `HttpURLConnection` (no OkHttp/Retrofit) for the two HTTP calls.
 - Tests: JUnit 4 unit tests for pure logic (ordering, patch-note gate, version compare, weather parsing).
+- Screenshots (v6): Paparazzi 1.3.5 Gradle plugin, test-only (JVM layoutlib, no emulator needed on this PC). `HomeScreenshots` renders the v6 screens with sample data; `./gradlew recordPaparazziDebug` writes PNGs to `app/src/test/snapshots/`. Never part of the APK.
 - Single module `:app`, package `ca.cheungeric.lounge`.
 
 No admin rights on the dev PC: JDK and Android SDK cmdline-tools are installed per-user under `%LOCALAPPDATA%\Programs` (JDK) and `%LOCALAPPDATA%\Android\Sdk`. `local.properties` points `sdk.dir` there (gitignored).
@@ -218,3 +219,29 @@ Same posture as v2: the phone only sends `cmd/*`, the TV publishes `tv/*`. All n
 
 ### Ambient screen (TV)
 - Pure black (#000) screen with only a dim clock and current weather; no animation, redraws once a minute; the block shifts position every minute (burn-in). Shown after N idle minutes on Lounge Home (Settings: Off / 5 / 10 / 30, default 10) and as a system screensaver (DreamService "Lounge Ambient"). Any key dismisses it (the key is consumed).
+
+## v6 — Minimal dock Home, HDMI tiles, Webb backgrounds (TV APP_VERSION 6)
+
+### Home ("Minimal dock")
+- Background: a James Webb photo (Cosmic Cliffs / Pillars of Creation / Deep Field, bundled in `drawable-nodpi`, decoded once at inSampleSize 2), Crop, under a black scrim (Settings → Background → Dim: Light 30 % / Medium 50 % / Strong 70 %) plus a bottom gradient. "Black" = plain Background colour. Prefs (lounge_prefs): `lounge_bgImage` (cliffs|pillars|deep|black), `lounge_bgDim` (30|50|70), `lounge_ambientStyle` (webb|black). Changes apply to Home immediately.
+- Level 1 (one screen): top-left big clock (~1.3× displayLarge), date, weather line; top-right Now Playing pill + settings button (Up from the dock reaches settings). Lower part: optional update banner / tip, then ONE dock row: [Continue card if any history] + favourites + an "All apps" tile (dots glyph) last; footer hint. Initial focus: first favourite, else the All apps tile.
+- Level 2 (Down, a full page below): "Inputs" row and "Recently watched" row; each row restores its last focused item.
+- All apps drawer: full-screen overlay (Webb background, darker scrim), title "All apps", 6-column grid of every visible app (favourites + others, A→Z case-insensitive; hidden apps stay hidden). OK launches, hold-OK opens the tile action sheet, Back closes and returns focus to the All apps tile. The Home button also closes it.
+- Tint: the focused app's dominant icon/banner colour (hue-bucket average, ignoring grey/very dark/very light pixels; fallback Primary) fades in over ~600 ms as a radial glow (~30 % alpha) at the bottom of the background and tints the focus ring.
+
+### HDMI tiles (Bravia)
+- `avContent.getCurrentExternalInputsStatus` (v1.1, falls back to 1.0) → HDMI inputs (uri `extInput:hdmi?port=N`, label/title, `connection`), active input from `getPlayingContentInfo`. Select → `setPlayContent {uri}`; failure → snack "Couldn't switch to …".
+- Tile: name, "HDMI N · Connected/Not connected", green dot (#4CD97B) when connected, "Now showing" chip on the active input, dimmer when disconnected.
+- States: not configured → "Set up TV control" (opens Settings); wrong key → "TV key rejected – check Settings"; unreachable/error → "TV not reachable" (select retries); loading → placeholder tiles.
+- Refresh on Home resume, when level 2 first gets focus, and every 30 s while level 2 is focused (and Lounge is resumed).
+
+### Continue / Recently watched
+- MainActivity's MediaWatcher reports (with Notification access) record each PLAYING session with a non-blank title: package, app label, title, subtitle, art (≤400 px PNG in filesDir/media_art). Stored in lounge_prefs `lounge_mediaHistory` (JSON, newest first, max 12, same package+title deduped, writes throttled to 30 s for the same item). Orphan art is cleaned at start.
+- Continue card (level 1, ~1.6× favourite width): art, else the app banner/icon; title + "App · 2 h ago". OK opens the app; hold-OK → "Remove from history".
+- Recently watched (level 2): smaller cards. With no history and no Notification access: a hint card "Turn on Notification access to see what you've watched" that opens the access settings. Nothing in level 1 when history is empty.
+
+### Ambient
+- Settings → Ambient screen → Style: Webb photo (default; the selected Home photo at ~30 % brightness, scaled 1.18× and slowly panning, ~90 s per leg) or Black (v5 pure black). Black background choice also means a black ambient screen. Applies to the in-app ambient screen and the "Lounge Ambient" screensaver.
+
+### Credits
+- Settings → About: "Background photos: NASA, ESA, CSA, STScI (ESA/Webb, CC BY 4.0)".

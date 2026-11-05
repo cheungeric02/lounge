@@ -161,7 +161,7 @@ private fun LetterBadge(label: String) {
 
 /** Drawable -> ImageBitmap, cached per package; falls back to [fallbackW]x[fallbackH] px when intrinsic size is unknown. */
 @Composable
-private fun rememberDrawableBitmap(key: String, drawable: Drawable?, fallbackW: Int, fallbackH: Int): ImageBitmap? =
+internal fun rememberDrawableBitmap(key: String, drawable: Drawable?, fallbackW: Int, fallbackH: Int): ImageBitmap? =
     remember(key, drawable) {
         drawable?.let {
             runCatching {

@@ -60,3 +60,9 @@ Verify: preview folded/unfolded, light/dark, demo flows (transport, seek, volume
 ## [x] T13 — TV Home Now Playing + v3 release (Medium) · deps: T11
 SPEC "v3 → TV Home v3", APP_VERSION 3 + PATCH_NOTES, filemap.
 Verify: builds/tests/lint.
+
+# v6 — Minimal dock Home, HDMI tiles, Webb backgrounds
+
+## [x] T14 — v6 TV release (Careful)
+SPEC "v6": minimal dock Home + All apps drawer, Bravia HDMI tiles (level 2), Webb backgrounds + Settings → Background + ambient Style (Ken Burns), media history (Continue + Recently watched), focus tint, APP_VERSION 6 + PATCH_NOTES, filemap.
+Verify: builds/tests/lint.

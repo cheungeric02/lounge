@@ -43,6 +43,10 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import ca.cheungeric.lounge.R
+import ca.cheungeric.lounge.ui.background.AmbientStyle
+import ca.cheungeric.lounge.ui.background.BackgroundPrefs
+import ca.cheungeric.lounge.ui.background.BackgroundSettings
+import ca.cheungeric.lounge.ui.background.BgImage
 import ca.cheungeric.lounge.data.AppEntry
 import ca.cheungeric.lounge.remote.BraviaControl
 import ca.cheungeric.lounge.remote.BraviaRpc
@@ -86,6 +90,8 @@ fun SettingsScreen(
     onBraviaTest: (ip: String, psk: String) -> Unit,
     ambientMinutes: Int,
     onAmbientMinutes: (Int) -> Unit,
+    background: BackgroundSettings = BackgroundSettings(),
+    onBackgroundChange: (BackgroundSettings) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val firstButton = remember { FocusRequester() }
@@ -126,6 +132,10 @@ fun SettingsScreen(
             )
         }
 
+        Section(stringResource(R.string.settings_background)) {
+            BackgroundSection(background, onBackgroundChange)
+        }
+
         Section(stringResource(R.string.settings_remote)) {
             PhoneRemoteSection(
                 enabled = remoteEnabled,
@@ -156,6 +166,25 @@ fun SettingsScreen(
                         else stringResource(R.string.settings_ambient_minutes, m),
                         onClick = { onAmbientMinutes(m) },
                         primary = m == ambientMinutes,
+                    )
+                }
+            }
+            Text(
+                stringResource(R.string.settings_ambient_style),
+                style = MaterialTheme.typography.titleLarge,
+                color = LoungeColors.OnSurfaceVariant,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                AmbientStyle.entries.forEach { st ->
+                    LoungeButton(
+                        stringResource(
+                            when (st) {
+                                AmbientStyle.Webb -> R.string.settings_ambient_style_webb
+                                AmbientStyle.Black -> R.string.settings_ambient_style_black
+                            },
+                        ),
+                        onClick = { onBackgroundChange(background.copy(ambientStyle = st)) },
+                        primary = st == background.ambientStyle,
                     )
                 }
             }
@@ -223,6 +252,11 @@ fun SettingsScreen(
                 stringResource(R.string.settings_about_tagline),
                 style = MaterialTheme.typography.titleLarge,
                 color = LoungeColors.OnSurfaceVariant,
+            )
+            Text(
+                stringResource(R.string.settings_about_photos),
+                style = MaterialTheme.typography.titleMedium,
+                color = LoungeColors.TertiaryText,
             )
         }
     }
@@ -333,6 +367,52 @@ private fun PhoneRemoteSection(
             onClick = { confirming = true },
             modifier = Modifier.focusRequester(newKeyButton),
         )
+    }
+}
+
+/** v6 Background: Home photo (or Black) and how dim it is; changes apply to Home immediately. */
+@Composable
+private fun BackgroundSection(bg: BackgroundSettings, onChange: (BackgroundSettings) -> Unit) {
+    Text(
+        stringResource(R.string.settings_bg_photo),
+        style = MaterialTheme.typography.titleLarge,
+        color = LoungeColors.OnSurfaceVariant,
+    )
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        BgImage.entries.forEach { img ->
+            LoungeButton(
+                stringResource(
+                    when (img) {
+                        BgImage.Cliffs -> R.string.settings_bg_cliffs
+                        BgImage.Pillars -> R.string.settings_bg_pillars
+                        BgImage.Deep -> R.string.settings_bg_deep
+                        BgImage.Black -> R.string.settings_bg_black
+                    },
+                ),
+                onClick = { onChange(bg.copy(image = img)) },
+                primary = img == bg.image,
+            )
+        }
+    }
+    Text(
+        stringResource(R.string.settings_bg_dim),
+        style = MaterialTheme.typography.titleLarge,
+        color = LoungeColors.OnSurfaceVariant,
+    )
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        BackgroundPrefs.DIM_LEVELS.forEachIndexed { i, d ->
+            LoungeButton(
+                stringResource(
+                    when (i) {
+                        0 -> R.string.settings_bg_dim_light
+                        1 -> R.string.settings_bg_dim_medium
+                        else -> R.string.settings_bg_dim_strong
+                    },
+                ),
+                onClick = { onChange(bg.copy(dim = d)) },
+                primary = d == bg.dim,
+            )
+        }
     }
 }
 
