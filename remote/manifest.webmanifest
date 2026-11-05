@@ -1,9 +1,9 @@
 {
   "name": "Lounge Remote",
-  "short_name": "Lounge",
+  "short_name": "Lounge Remote",
   "description": "Phone remote for the Lounge TV home screen.",
-  "id": "/lounge/remote/",
-  "start_url": "/lounge/remote/",
+  "id": "/lounge/remote/app",
+  "start_url": "/lounge/remote/?source=pwa",
   "scope": "/lounge/remote/",
   "display": "standalone",
   "orientation": "any",

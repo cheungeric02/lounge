@@ -370,8 +370,12 @@ dialog.dlg::backdrop { background: var(--scrim); }
 
 <script type="module">
 // ---------------------------------------------------------------- constants
-const APP_VERSION = 1; // MUST equal the sw.js cache number (lounge-remote-v1)
+const APP_VERSION = 2; // MUST equal the sw.js cache number (lounge-remote-v2)
 const PATCH_NOTES = [
+  { v: 2, date: '2026-11-04', title: 'Install fix', items: [
+    'Fixed installing to your home screen showing "already installed" when nothing was installed',
+    'The home-screen icon is now labelled Lounge Remote',
+  ] },
   { v: 1, date: '2026-11-04', title: 'Lounge Remote', items: [
     'Pair with your TV by scanning its QR code or typing the four-word key',
     'Launch apps and press Home or Back from your phone',
