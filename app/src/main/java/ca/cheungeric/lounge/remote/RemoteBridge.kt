@@ -591,6 +591,10 @@ class RemoteBridge(
                 val intent = apps.firstOrNull { it.packageName == cmd.pkg }?.launchIntent ?: return
                 withContext(Dispatchers.Main) {
                     app.startActivity(Intent(intent).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    val profile = cmd.profile
+                    if (profile != null && cmd.pkg in ProfilePicker.SUPPORTED) {
+                        HomeButtonService.armProfilePick(cmd.pkg, profile)
+                    }
                 }
             }
             RemoteCommand.Home -> withContext(Dispatchers.Main) {

@@ -193,4 +193,11 @@ class RemoteCommandTest {
         assertEquals(RemoteCommand.Text(max), fresh("""{"type":"text","text":"$max","at":$now}"""))
         assertNull(fresh("""{"type":"text","text":"${max}b","at":$now}"""))
     }
+
+    @Test fun launchWithProfile() {
+        val p = "com.google.android.youtube.tv"
+        assertEquals(RemoteCommand.Launch(p, "Vanessa"), fresh("""{"type":"launch","pkg":"$p","profile":"  Vanessa ","at":$now}"""))
+        assertEquals(RemoteCommand.Launch(p, null), fresh("""{"type":"launch","pkg":"$p","profile":"   ","at":$now}"""))
+        assertEquals(RemoteCommand.Launch(p, null), fresh("""{"type":"launch","pkg":"$p","profile":5,"at":$now}"""))
+    }
 }

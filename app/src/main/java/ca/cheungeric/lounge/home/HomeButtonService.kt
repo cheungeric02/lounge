@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
@@ -16,6 +18,7 @@ import ca.cheungeric.lounge.BuildConfig
 import ca.cheungeric.lounge.LoungeApp
 import ca.cheungeric.lounge.MainActivity
 import ca.cheungeric.lounge.remote.InputSnapshot
+import ca.cheungeric.lounge.remote.ProfilePicker
 import ca.cheungeric.lounge.remote.TvInput
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -168,6 +171,82 @@ class HomeButtonService : AccessibilityService() {
         }
     }
 
+    // ---- v4: auto-pick a profile on YouTube's "Who's watching?" screen ----
+
+    private val pickHandler = Handler(Looper.getMainLooper())
+    private var pickPkg: String? = null
+    private var pickProfile: String? = null
+    private var pickUntil = 0L
+    private val pickTick = object : Runnable {
+        override fun run() {
+            val pkg = pickPkg
+            val profile = pickProfile
+            if (pkg == null || profile == null || now() > pickUntil) {
+                stopPick()
+                return
+            }
+            if (tryPick(pkg, profile)) {
+                debug("auto-picked profile")
+                stopPick()
+            } else {
+                pickHandler.postDelayed(this, ProfilePicker.POLL_MS)
+            }
+        }
+    }
+
+    private fun startPick(pkg: String, profile: String) {
+        pickHandler.removeCallbacks(pickTick)
+        pickPkg = pkg
+        pickProfile = profile
+        pickUntil = now() + ProfilePicker.WINDOW_MS
+        pickHandler.postDelayed(pickTick, ProfilePicker.POLL_MS)
+    }
+
+    private fun stopPick() {
+        pickHandler.removeCallbacks(pickTick)
+        pickPkg = null
+        pickProfile = null
+    }
+
+    /** Snapshot the target app's window, find the profile, click it. Never throws. */
+    private fun tryPick(pkg: String, profile: String): Boolean {
+        val root = try {
+            windows?.firstOrNull { it.root?.packageName?.toString() == pkg }?.root
+                ?: rootInActiveWindow?.takeIf { it.packageName?.toString() == pkg }
+        } catch (t: Throwable) {
+            null
+        } ?: return false
+        val infos = ArrayList<AccessibilityNodeInfo>()
+        val nodes = ArrayList<ProfilePicker.Node>()
+        try {
+            infos += root
+            nodes += ProfilePicker.Node(root.text?.toString(), root.contentDescription?.toString(), root.isClickable, -1)
+            var i = 0
+            while (i < infos.size && infos.size < ProfilePicker.MAX_NODES) {
+                val n = infos[i]
+                for (c in 0 until n.childCount) {
+                    val child = runCatching { n.getChild(c) }.getOrNull() ?: continue
+                    infos += child
+                    nodes += ProfilePicker.Node(
+                        child.text?.toString(), child.contentDescription?.toString(), child.isClickable, i,
+                    )
+                    if (infos.size >= ProfilePicker.MAX_NODES) break
+                }
+                i++
+            }
+            val target = ProfilePicker.target(nodes, profile) ?: return false
+            val node = infos[target]
+            return node.performAction(AccessibilityNodeInfo.ACTION_CLICK) ||
+                (node.performAction(AccessibilityNodeInfo.ACTION_FOCUS) &&
+                    node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        } catch (t: Throwable) {
+            debug("tryPick failed: ${t.javaClass.simpleName}")
+            return false
+        } finally {
+            infos.forEach(::recycle)
+        }
+    }
+
     private fun recycle(node: AccessibilityNodeInfo) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             @Suppress("DEPRECATION")
@@ -191,6 +270,7 @@ class HomeButtonService : AccessibilityService() {
     }
 
     private fun disconnect() {
+        stopPick()
         if (connected === this) {
             connected = null
             TvInput.set(InputSnapshot.NONE)
@@ -252,6 +332,19 @@ class HomeButtonService : AccessibilityService() {
             connected?.performGlobalAction(GLOBAL_ACTION_BACK) ?: false
         } catch (t: Throwable) {
             false
+        }
+
+        /**
+         * Phone launch with a profile (v4): for [ProfilePicker.WINDOW_MS], look for [profile] on
+         * [pkg]'s account picker and click it. No-op if the service isn't connected. Main thread.
+         */
+        @JvmStatic
+        fun armProfilePick(pkg: String, profile: String) {
+            try {
+                connected?.startPick(pkg, profile)
+            } catch (t: Throwable) {
+                // best-effort
+            }
         }
 
         /** True while the service is connected (tv/status `typing`). */

@@ -1,7 +1,7 @@
 package ca.cheungeric.lounge.ui.patchnotes
 
 /** Integer build number. Single source of truth: Gradle reads this line for versionCode/versionName. */
-const val APP_VERSION = 3
+const val APP_VERSION = 4
 
 data class PatchNote(
     val v: Int,
@@ -12,6 +12,15 @@ data class PatchNote(
 
 /** Newest first. Add an entry every release and bump [APP_VERSION]. */
 val PATCH_NOTES = listOf(
+    PatchNote(
+        4,
+        "2026-11-04",
+        "YouTube profile auto-pick",
+        listOf(
+            "Opening YouTube from a phone now picks that phone's profile on the \"Who's watching?\" screen automatically. Set it on each phone in Lounge Remote → ⋮ → This phone.",
+            "Needs the Home button accessibility service on, and both accounts added in YouTube.",
+        ),
+    ),
     PatchNote(
         3,
         "2026-11-04",

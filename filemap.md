@@ -11,7 +11,7 @@
 - `local.properties` — `sdk.dir` (gitignored, per machine)
 - `.github/workflows/release.yml` — CI: test + lint + assembleRelease (uses runner's preinstalled SDK, no setup-android); on main also signs, cross-checks APK versionCode == APP_VERSION, builds `site/` (lounge.apk, version.json via jq, index.html from template, sha256 self-check, copies `remote/` to `site/remote/`) and deploys Pages
 - `remote/` — Lounge Remote phone web app (CI copies it to `site/remote/` → `/lounge/remote/`):
-  - `index.html` — single-file app (inline CSS + JS module): pairing (#k= / typed key), Firebase adapter (tv/* read, cmd/* push), `?demo=1` in-memory fake TV, favorites drag-reorder, all-apps grid + search, hidden, theme toggle, APP_VERSION + PATCH_NOTES + What's New gate; v3: Now Playing card (tv/nowPlaying + tv/art, live position extrapolation, transport), volume row (tv/volume), Sleep/Type/Send link chips + bottom sheets (sleep, keyboard auto-open from tv/input, send link), share-target param handling, demo fake media/volume/sleep/text box
+  - `index.html` — single-file app (inline CSS + JS module): pairing (#k= / typed key), Firebase adapter (tv/* read, cmd/* push), `?demo=1` in-memory fake TV, favorites drag-reorder, all-apps grid + search, hidden, theme toggle, APP_VERSION + PATCH_NOTES + What's New gate; v3: Now Playing card (tv/nowPlaying + tv/art, live position extrapolation, transport), volume row (tv/volume), Sleep/Type/Send link chips + bottom sheets (sleep, keyboard auto-open from tv/input, send link), share-target param handling, demo fake media/volume/sleep/text box; v4: "Whose phone is this?" profile (⋮ → This phone, localStorage lounge_remote_profile) sent as `profile` on launch
   - `manifest.webmanifest` — PWA manifest (scope/start_url `/lounge/remote/`, `share_target` GET title/text/url → `/lounge/remote/`)
   - `sw.js` — service worker, cache `lounge-remote-vN` (N = APP_VERSION); network-first index.html, cache-first icons, never Firebase
   - `icons/` — icon-192.png, icon-512.png, icon-maskable-512.png
@@ -33,7 +33,7 @@
   - `HomeLayout.kt` — pure `build` + transforms (initDefaults, toggleFavorite, hide/unhide, moveLeft/Right, moveFavoriteTo), `DEFAULT_FAVORITES`, HomeState
   - `WeatherRepository.kt` — Open-Meteo fetch + DataStore "lounge_weather" cache + `startAutoRefresh`; Weather, WeatherParser, WeatherCodes (WMO → WeatherDescription/WeatherIconKey)
 - `app/src/test/java/ca/cheungeric/lounge/data/` — HomeLayoutTest, WeatherTest
-- `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService; holds a RemoteBridge ref while connected; static `loungeIntent()` + `performBack()` hooks; v3: tracks the focused editable (never password) field into TvInput, `isRunning()`, `setText()` (ACTION_SET_TEXT), `submit()` (ACTION_IME_ENTER, API 30+)
+- `app/src/main/java/ca/cheungeric/lounge/home/HomeButtonService.kt` — Home-button AccessibilityService; holds a RemoteBridge ref while connected; static `loungeIntent()` + `performBack()` hooks; v3: tracks the focused editable (never password) field into TvInput, `isRunning()`, `setText()` (ACTION_SET_TEXT), `submit()` (ACTION_IME_ENTER, API 30+); v4: `armProfilePick()` polls YouTube's "Who's watching?" screen for 25 s and clicks the phone's profile
 - `app/src/main/java/ca/cheungeric/lounge/home/MediaAccessService.kt` — empty NotificationListenerService; its grant unlocks MediaSessionManager.getActiveSessions
 - `app/src/main/java/ca/cheungeric/lounge/home/MediaAccessStatus.kt` — isGranted(context) + openSettings(context): Boolean (ordered NOTIFICATION_ACCESS_TARGETS, reuses startableInOrder)
 - `app/src/main/java/ca/cheungeric/lounge/home/HomeDecider.kt` — pure Home-key / stock-launcher-window decision logic (KeyDecision, STOCK_LAUNCHERS)
@@ -66,7 +66,8 @@
   - `RemoteKey.kt` — generate/validate/normalize (bare key or pairing URL `#k=`), pairingUrl
   - `SseParser.kt` — pure incremental Firebase REST stream parser (SseEvent: Put/Patch/KeepAlive/Cancel/AuthRevoked)
   - `FirebaseRest.kt` — RemoteDb interface + HttpURLConnection impl (get/put/patch/delete/stream, 307 follow, Date-header clock offset, `urlFor` guard: only `lounge/<validKey>[/…]`)
-  - `RemoteCommand.kt` — pure command parse/freshness (30 s), pkgKey helpers, childrenOf(stream event); v3 media/volume/sleep/open/text/submit
+  - `RemoteCommand.kt` — pure command parse/freshness (30 s), pkgKey helpers, childrenOf(stream event); v3 media/volume/sleep/open/text/submit; v4 launch `profile`
+  - `ProfilePicker.kt` — v4 pure profile auto-pick: picker-screen detection, name matching, click target on an accessibility snapshot
   - `RemotePayloads.kt` — pure tv/status (+mediaAccess, typing), tv/apps, tv/layout, tv/volume, tv/sleep JSON builders + sha1/PNG/JPEG data-URI
   - `NowPlaying.kt` — pure Now Playing: session choice, positionAt extrapolation, seek clamp, republish check, tv/nowPlaying payload, art fitWithin
   - `MediaWatcher.kt` — MediaSessionManager/MediaController watcher (callbackFlow of Reports; no access → NO_ACCESS, never throws), transport controls, art JPEG encode (≤320×320)
@@ -74,7 +75,7 @@
   - `SleepTimer.kt` — pure sleep expiry (≤240 min) + bridge-restart rearm decision
   - `TvInput.kt` — InputSnapshot + process-wide focused-field StateFlow (HomeButtonService → bridge) + tv/input payload
   - `RemoteBridge.kt` — process-wide ref-counted bridge (AppContainer.remoteBridge): prefs lounge_remoteEnabled/lounge_remoteKey, setEnabled/regenerateKey, key + status StateFlows, publishes status/apps/layout/icons, consumes cmd/, backoff 2→60 s; v3 publishes tv/nowPlaying + tv/art, tv/volume, tv/input, tv/sleep; handles media/volume/sleep/open/text/submit
-- `app/src/test/java/ca/cheungeric/lounge/remote/` — SseParser, RemoteCommand, RemoteKey (+ path guard, WordList), RemotePayloads, NowPlaying, LinkRouter, SleepTimer, TvInput tests; `data/MoveFavoriteToTest.kt`
+- `app/src/test/java/ca/cheungeric/lounge/remote/` — SseParser, RemoteCommand, RemoteKey (+ path guard, WordList), RemotePayloads, NowPlaying, LinkRouter, SleepTimer, TvInput, ProfilePicker tests; `data/MoveFavoriteToTest.kt`
 - `app/src/main/java/ca/cheungeric/lounge/remote/qr/QrEncoder.kt` — pure-Kotlin QR encoder (byte mode UTF-8, level M, v1–6, GF(256) Reed–Solomon, 8-mask penalty) + QrMatrix
 - `app/src/main/java/ca/cheungeric/lounge/remote/qr/QrCode.kt` — Composable QrCode(text): Canvas, black on white rounded card, 4-module quiet zone
 - `app/src/test/java/ca/cheungeric/lounge/remote/qr/` — QrEncoderTest + QrFixtures (segno-generated reference matrices)

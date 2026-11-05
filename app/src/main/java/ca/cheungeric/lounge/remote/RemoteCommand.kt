@@ -11,7 +11,8 @@ import kotlin.math.abs
 
 /** A phone → TV command (SPEC "v2 → Data contract", `cmd/<pushId>`). Pure. */
 sealed interface RemoteCommand {
-    data class Launch(val pkg: String) : RemoteCommand
+    /** [profile] (v4): name to auto-pick on the app's "Who's watching?" screen, e.g. YouTube. */
+    data class Launch(val pkg: String, val profile: String? = null) : RemoteCommand
     data class Favorite(val pkg: String) : RemoteCommand
     data class Unfavorite(val pkg: String) : RemoteCommand
     data class Hide(val pkg: String) : RemoteCommand
@@ -49,7 +50,7 @@ sealed interface RemoteCommand {
             val type = obj.stringField("type") ?: return null
             val pkg = obj.stringField("pkg")?.takeIf(::isValidPkg)
             return when (type) {
-                "launch" -> pkg?.let(::Launch)
+                "launch" -> pkg?.let { Launch(it, ProfilePicker.normalizeProfile(obj.stringField("profile"))) }
                 "favorite" -> pkg?.let(::Favorite)
                 "unfavorite" -> pkg?.let(::Unfavorite)
                 "hide" -> pkg?.let(::Hide)

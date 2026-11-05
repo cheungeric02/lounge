@@ -515,8 +515,11 @@ dialog.dlg::backdrop { background: var(--scrim); }
 
 <script type="module">
 // ---------------------------------------------------------------- constants
-const APP_VERSION = 3; // MUST equal the sw.js cache number (lounge-remote-v3)
+const APP_VERSION = 4; // MUST equal the sw.js cache number (lounge-remote-v4)
 const PATCH_NOTES = [
+  { v: 4, date: '2026-11-04', title: 'YouTube profile auto-pick', items: [
+    'Tell Lounge Remote whose phone this is (⋮ → This phone), and opening YouTube picks that profile on the TV automatically',
+  ] },
   { v: 3, date: '2026-11-04', title: 'Now Playing and more', items: [
     'Now Playing card with play, pause, seek and skip controls',
     'TV volume and mute buttons, plus a sleep timer with a countdown',
@@ -538,6 +541,8 @@ const PATCH_NOTES = [
 const LS_KEY = 'lounge_remote_key';
 const LS_THEME = 'lounge_remote_theme';
 const LS_SEEN = 'lounge_remote_lastSeenVer';
+const LS_PROFILE = 'lounge_remote_profile';
+const LS_PROFILE_ASKED = 'lounge_remote_profileAsked';
 const KEY_RE = /^[a-z]+(-[a-z]+){3}$/;
 const ONLINE_MS = 150000;
 const PENDING_MS = 5000;
@@ -683,7 +688,7 @@ function fmtTime(ms) {
 // ---------------------------------------------------------------- backends
 // Interface: subscribe({status, apps, layout, icons, nowPlaying, art, volume, sleep, input, offset, error, notice?})
 //   -> unsubscribe(); send(cmd) -> Promise. (notice is demo-only.)
-const CMD_FIELDS = ['pkg', 'to', 'action', 'ms', 'minutes', 'url', 'text'];
+const CMD_FIELDS = ['pkg', 'to', 'action', 'ms', 'minutes', 'url', 'text', 'profile'];
 let fb = null;
 async function createFirebaseBackend(key) {
   if (!KEY_RE.test(key)) throw new Error('bad key');
@@ -1071,6 +1076,7 @@ async function connect(key) {
   }
   if (my !== session) return;
   S.backend = backend;
+  setTimeout(() => maybeAskProfile(), 1200);
   S.unsub = backend.subscribe({
     offset: (v) => { if (my !== session) return; S.offset = v; renderChip(); },
     status: (v) => { if (my !== session) return; S.status = normStatus(v); S.statusSeen = true; renderChip(); renderNowPlaying(); flushShare(); },
@@ -1123,6 +1129,7 @@ $('menuBtn').addEventListener('click', (e) => {
   openMenu(e.currentTarget, [
     { label: 'Send a link', onClick: () => openSheet('link') },
     ...demoItems,
+    { label: `This phone: ${lsGet(LS_PROFILE) || 'not set'}`, onClick: askProfile },
     { label: 'Patch notes', onClick: showPatchNotes },
     { label: 'Unpair', danger: true, onClick: () => openDialog({
       title: 'Unpair this phone?',
@@ -1131,6 +1138,41 @@ $('menuBtn').addEventListener('click', (e) => {
     }) },
   ]);
 });
+
+// ---------------------------------------------------------------- whose phone (v4)
+const PROFILE_PRESETS = ['Eric', 'Vanessa'];
+function setProfile(name) {
+  const v = (name || '').trim().replace(/\s+/g, ' ').slice(0, 40);
+  if (v) lsSet(LS_PROFILE, v); else lsDel(LS_PROFILE);
+  lsSet(LS_PROFILE_ASKED, '1');
+  snack(v ? `This phone is ${v}'s. YouTube will open on ${v}'s profile.` : 'YouTube will open without picking a profile');
+}
+function askProfile() {
+  const cur = lsGet(LS_PROFILE) || '';
+  openDialog({
+    title: 'Whose phone is this?',
+    html: '<p style="margin:0;color:var(--on-var)">When you open YouTube from this phone, the TV picks this profile on the “Who’s watching?” screen. Use the name exactly as YouTube shows it.</p>' +
+      (cur ? `<p style="margin:12px 0 0">Now: <strong>${esc(cur)}</strong></p>` : ''),
+    actions: [
+      ...PROFILE_PRESETS.map((n) => ({ label: n, primary: n === cur, onClick: () => setProfile(n) })),
+      { label: 'Other…', onClick: askProfileOther },
+      { label: cur ? 'Clear' : 'Not now', onClick: () => (cur ? setProfile('') : lsSet(LS_PROFILE_ASKED, '1')) },
+    ],
+  });
+}
+function askProfileOther() {
+  openDialog({
+    title: 'Profile name',
+    html: '<input id="profileInput" class="text-input" type="text" maxlength="40" autocomplete="off" placeholder="Name as YouTube shows it" style="width:100%;box-sizing:border-box">',
+    actions: [{ label: 'Cancel' }, { label: 'Save', primary: true, onClick: () => setProfile($('profileInput').value) }],
+  });
+  setTimeout(() => { const i = $('profileInput'); if (i) { i.value = lsGet(LS_PROFILE) || ''; i.focus(); } }, 50);
+}
+function maybeAskProfile(tries = 0) {
+  if (lsGet(LS_PROFILE) || lsGet(LS_PROFILE_ASKED)) return;
+  if ($('dlg').open || sheetKind) { if (tries < 20) setTimeout(() => maybeAskProfile(tries + 1), 1500); return; }
+  askProfile();
+}
 
 // ---------------------------------------------------------------- online status
 function onlineState() {
@@ -1171,6 +1213,8 @@ function send(type, pkg, to) {
   const cmd = { type };
   if (pkg) cmd.pkg = pkg;
   if (to != null) cmd.to = to;
+  const profile = type === 'launch' ? (lsGet(LS_PROFILE) || '') : '';
+  if (profile) cmd.profile = profile;
   if (!sendCmd(cmd, type === 'launch' ? `Opening ${labelOf(pkg)} on TV` : null)) return;
   if (pkg) { setPending(pkg); renderContent(); }
 }
