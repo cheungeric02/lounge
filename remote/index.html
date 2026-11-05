@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Lounge Remote</title>
 <meta name="description" content="Phone remote for the Lounge TV home screen.">
 <meta name="theme-color" content="#141218">
@@ -300,6 +300,83 @@ dialog.dlg::backdrop { background: var(--scrim); }
 .pn-entry h3 { font-size: 16px; font-weight: 500; margin: 4px 0 6px; }
 .pn-entry ul { margin: 0; padding-left: 20px; }
 .pn-entry li { margin: 3px 0; font-size: 14px; }
+
+/* Now Playing */
+.np { background: var(--surface-2); border-radius: 20px; padding: 16px; }
+.np-quiet { display: flex; align-items: center; gap: 10px; color: var(--on-var); font-size: 14px; min-height: 24px; }
+.np-quiet svg { width: 20px; height: 20px; flex: none; }
+.np-top { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.np-art {
+  width: 64px; height: 64px; border-radius: 14px; flex: none; overflow: hidden; position: relative;
+  background: var(--surface-4); color: var(--on-var); display: grid; place-items: center;
+}
+.np-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.np-art img.np-icon { object-fit: contain; }
+.np-art svg { width: 30px; height: 30px; }
+.np-meta { flex: 1; min-width: 0; }
+.np-title { font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-sub { font-size: 14px; color: var(--on-var); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.np-prog { margin-top: 14px; }
+.bar { height: 4px; border-radius: 2px; background: var(--surface-4); overflow: hidden; }
+.bar > span { display: block; height: 100%; width: 0; background: var(--primary); border-radius: 2px; }
+.np-times { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; color: var(--on-var); font-variant-numeric: tabular-nums; }
+.np-transport { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; }
+.np-transport .icon-btn { width: 48px; height: 48px; border-radius: 24px; color: var(--on); }
+.np-play {
+  width: 52px; height: 52px; border-radius: 16px; margin: 0 6px; flex: none;
+  background: var(--primary); color: var(--on-primary); display: grid; place-items: center;
+}
+.np-play svg { width: 28px; height: 28px; }
+
+/* Volume row */
+.vol-row { display: flex; align-items: center; gap: 8px; }
+.vol-btn {
+  height: 48px; min-width: 56px; padding: 0 14px; border-radius: 24px; flex: none;
+  background: var(--sc); color: var(--on-sc); display: grid; place-items: center;
+}
+.vol-btn svg { width: 22px; height: 22px; }
+.vol-btn.on { background: var(--pc); color: var(--on-pc); }
+.vol-bar { flex: 1; min-width: 40px; height: 6px; border-radius: 3px; }
+.vol-bar > span { border-radius: 3px; transition: width .25s cubic-bezier(.2,.8,.2,1); }
+.vol-bar.muted > span { background: var(--outline); }
+
+/* Action chips */
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.act-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px 0 10px; border-radius: 20px;
+  background: var(--surface-3); color: var(--on); font-size: 14px; font-weight: 500; white-space: nowrap;
+}
+.act-chip svg { width: 18px; height: 18px; color: var(--on-var); }
+.act-chip.armed { background: var(--sc); color: var(--on-sc); }
+.act-chip.armed svg { color: var(--on-sc); }
+
+/* Bottom sheet */
+.sheet-scrim {
+  position: fixed; inset: 0; z-index: 40; background: var(--scrim);
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.sheet-scrim.open { opacity: 1; pointer-events: auto; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; margin: 0 auto;
+  width: 100%; max-width: 640px; max-height: calc(100dvh - 48px); overflow-y: auto;
+  background: var(--surface-2); border-radius: 28px 28px 0 0; box-shadow: var(--shadow);
+  padding: 8px 20px calc(20px + env(safe-area-inset-bottom));
+  transform: translateY(105%); visibility: hidden;
+  transition: transform .35s cubic-bezier(.2,.9,.25,1.05), visibility 0s linear .35s;
+}
+.sheet.open { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.2,.9,.25,1.05), visibility 0s; }
+.sheet-grab { width: 32px; height: 4px; border-radius: 2px; background: var(--outline-var); margin: 6px auto 14px; }
+.sheet h2 { font-size: 22px; font-weight: 400; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet .sheet-sub { margin: 6px 0 0; color: var(--on-var); font-size: 14px; }
+.sheet .sheet-body { margin-top: 18px; }
+.sheet-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 16px; }
+.sheet-actions .btn-filled { margin-top: 0; width: auto; height: 44px; }
+.sleep-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sleep-opt { height: 52px; border-radius: 16px; background: var(--surface-3); font-weight: 500; }
+.sleep-opt.sel { background: var(--pc); color: var(--on-pc); }
+.custom-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+.custom-row .text-input { flex: 1; min-width: 0; }
+.custom-row .btn-tonal { height: 52px; border-radius: 16px; }
 </style>
 </head>
 <body>
@@ -334,6 +411,37 @@ dialog.dlg::backdrop { background: var(--scrim); }
     </div>
     <div id="content" class="cols" hidden>
       <div class="col">
+        <section id="npCard" class="np" aria-label="Now playing">
+          <div id="npQuiet" class="np-quiet"><span data-icon="music"></span><span id="npQuietText">Nothing playing</span></div>
+          <div id="npFull" hidden>
+            <div class="np-top">
+              <div id="npArt" class="np-art"></div>
+              <div class="np-meta"><div id="npTitle" class="np-title"></div><div id="npSub" class="np-sub"></div></div>
+            </div>
+            <div id="npProg" class="np-prog">
+              <div class="bar" role="progressbar" aria-label="Playback position"><span id="npBar"></span></div>
+              <div class="np-times"><span id="npEl">0:00</span><span id="npTot">0:00</span></div>
+            </div>
+            <div class="np-transport">
+              <button type="button" class="icon-btn press" data-media="prev" aria-label="Previous"><span data-icon="prev"></span></button>
+              <button type="button" class="icon-btn press" data-media="back10" aria-label="Back 10 seconds"><span data-icon="replay10"></span></button>
+              <button type="button" id="npPlay" class="np-play press" data-media="toggle" aria-label="Play or pause"></button>
+              <button type="button" class="icon-btn press" data-media="fwd10" aria-label="Forward 10 seconds"><span data-icon="forward10"></span></button>
+              <button type="button" class="icon-btn press" data-media="next" aria-label="Next"><span data-icon="next"></span></button>
+            </div>
+          </div>
+        </section>
+        <div class="vol-row">
+          <button type="button" class="vol-btn press" data-vol="down" aria-label="Volume down"><span data-icon="minus"></span></button>
+          <div id="volBar" class="bar vol-bar" role="meter" aria-label="TV volume" aria-valuemin="0"><span></span></div>
+          <button type="button" class="vol-btn press" data-vol="up" aria-label="Volume up"><span data-icon="plus"></span></button>
+          <button type="button" id="muteBtn" class="vol-btn press" data-vol="mute" aria-label="Mute"></button>
+        </div>
+        <div class="chip-row">
+          <button type="button" id="sleepChip" class="act-chip press"><span data-icon="moon"></span><span id="sleepChipText">Sleep</span></button>
+          <button type="button" id="typeChip" class="act-chip press"><span data-icon="keyboard"></span>Type</button>
+          <button type="button" id="linkChip" class="act-chip press"><span data-icon="link"></span>Send link</button>
+        </div>
         <div class="strip">
           <button id="homeBtn" class="pill press" type="button"><span data-icon="home"></span>Home</button>
           <button id="backBtn" class="pill press" type="button"><span data-icon="back"></span>Back</button>
@@ -360,6 +468,43 @@ dialog.dlg::backdrop { background: var(--scrim); }
   </section>
 </main>
 
+<div id="sheetScrim" class="sheet-scrim"></div>
+<div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-grab" aria-hidden="true"></div>
+  <h2 id="sheetTitle"></h2>
+  <p id="sheetSub" class="sheet-sub" hidden></p>
+  <div id="sheetSleep" class="sheet-body" hidden>
+    <div class="sleep-opts">
+      <button type="button" class="sleep-opt press" data-min="0">Off</button>
+      <button type="button" class="sleep-opt press" data-min="15">15 min</button>
+      <button type="button" class="sleep-opt press" data-min="30">30 min</button>
+      <button type="button" class="sleep-opt press" data-min="60">60 min</button>
+      <button type="button" class="sleep-opt press" data-min="90">90 min</button>
+      <button type="button" class="sleep-opt press" data-min="custom">Custom</button>
+    </div>
+    <form id="sleepCustom" class="custom-row" novalidate hidden>
+      <input id="sleepMin" class="text-input" type="number" inputmode="numeric" min="1" max="240" step="1" placeholder="Minutes (1–240)" aria-label="Custom minutes" aria-describedby="sleepErr">
+      <button type="submit" class="btn-tonal press">Set</button>
+    </form>
+    <p id="sleepErr" class="err" hidden>Enter a number of minutes from 1 to 240.</p>
+    <div class="sheet-actions"><button type="button" class="btn-text press" data-close>Close</button></div>
+  </div>
+  <form id="sheetKb" class="sheet-body" novalidate autocomplete="off" hidden>
+    <input id="kbInput" class="text-input" type="text" maxlength="500" enterkeyhint="search" autocapitalize="sentences" autocomplete="off" aria-label="Text to send to the TV">
+    <div class="sheet-actions">
+      <button type="button" class="btn-text press" data-close>Close</button>
+      <button type="submit" class="btn-filled press">Search</button>
+    </div>
+  </form>
+  <form id="sheetLink" class="sheet-body" novalidate autocomplete="off" hidden>
+    <input id="linkInput" class="text-input" type="url" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="https://" aria-label="Link" aria-describedby="linkErr">
+    <p id="linkErr" class="err" hidden>Enter a link that starts with http:// or https://</p>
+    <div class="sheet-actions">
+      <button type="button" class="btn-text press" data-close>Close</button>
+      <button type="submit" class="btn-filled press">Send</button>
+    </div>
+  </form>
+</div>
 <div id="menu" class="menu" role="menu" aria-hidden="true"></div>
 <div id="snack" class="snack" role="status" aria-live="polite"></div>
 <dialog id="dlg" class="dlg" aria-labelledby="dlgTitle">
@@ -370,8 +515,14 @@ dialog.dlg::backdrop { background: var(--scrim); }
 
 <script type="module">
 // ---------------------------------------------------------------- constants
-const APP_VERSION = 2; // MUST equal the sw.js cache number (lounge-remote-v2)
+const APP_VERSION = 3; // MUST equal the sw.js cache number (lounge-remote-v3)
 const PATCH_NOTES = [
+  { v: 3, date: '2026-11-04', title: 'Now Playing and more', items: [
+    'Now Playing card with play, pause, seek and skip controls',
+    'TV volume and mute buttons, plus a sleep timer with a countdown',
+    'Type into the TV from your phone when a text box is selected',
+    'Share to TV from other apps, or send a link from the menu',
+  ] },
   { v: 2, date: '2026-11-04', title: 'Install fix', items: [
     'Fixed installing to your home screen showing "already installed" when nothing was installed',
     'The home-screen icon is now labelled Lounge Remote',
@@ -417,6 +568,19 @@ const ICONS = {
   back: '<path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20v-2Z"/>',
   search: '<path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5Zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9Z"/>',
   expand: '<path d="M16.6 8.6 12 13.2 7.4 8.6 6 10l6 6 6-6-1.4-1.4Z"/>',
+  music: '<path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6Z"/>',
+  play: '<path d="M8 5v14l11-7L8 5Z"/>',
+  pause: '<path d="M6 19h4V5H6v14Zm8-14v14h4V5h-4Z"/>',
+  next: '<path d="M6 18l8.5-6L6 6v12Zm10-12v12h2V6h-2Z"/>',
+  prev: '<path d="M6 6h2v12H6V6Zm3.5 6 8.5 6V6l-8.5 6Z"/>',
+  replay10: '<path d="M12 4V1L7 5.5 12 10V6.5a6 6 0 1 1-6 6H3.5A8.5 8.5 0 1 0 12 4Z"/><text x="12" y="15.4" font-size="6.6" font-weight="700" text-anchor="middle" font-family="system-ui,sans-serif">10</text>',
+  forward10: '<path transform="matrix(-1 0 0 1 24 0)" d="M12 4V1L7 5.5 12 10V6.5a6 6 0 1 1-6 6H3.5A8.5 8.5 0 1 0 12 4Z"/><text x="12" y="15.4" font-size="6.6" font-weight="700" text-anchor="middle" font-family="system-ui,sans-serif">10</text>',
+  minus: '<path d="M5 11h14v2H5v-2Z"/>',
+  plus: '<path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z"/>',
+  volume: '<path d="M3 9v6h4l5 5V4L7 9H3Zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05A4.47 4.47 0 0 0 16.5 12ZM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54Z"/>',
+  muted: '<path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63Zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0 0 21 12a9 9 0 0 0-7-8.77v2.06A7 7 0 0 1 19 12ZM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a9 9 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3ZM12 4 9.91 6.09 12 8.18V4Z"/>',
+  keyboard: '<path d="M20 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm-9 3h2v2h-2V8Zm0 3h2v2h-2v-2ZM8 8h2v2H8V8Zm0 3h2v2H8v-2Zm-1 2H5v-2h2v2Zm0-3H5V8h2v2Zm9 7H8v-2h8v2Zm0-4h-2v-2h2v2Zm0-3h-2V8h2v2Zm3 3h-2v-2h2v2Zm0-3h-2V8h2v2Z"/>',
+  link: '<path d="M3.9 12A3.1 3.1 0 0 1 7 8.9h4V7H7a5 5 0 0 0 0 10h4v-1.9H7A3.1 3.1 0 0 1 3.9 12ZM8 13h8v-2H8v2Zm9-6h-4v1.9h4a3.1 3.1 0 0 1 0 6.2h-4V17h4a5 5 0 0 0 0-10Z"/>',
   drag: '<path d="M9 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM9 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM9 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/>',
 };
 const icon = (name) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${ICONS[name]}</svg>`;
@@ -466,11 +630,60 @@ function normIcons(v) {
 }
 function normStatus(v) {
   if (!v || typeof v !== 'object' || typeof v.lastSeen !== 'number') return null;
-  return { lastSeen: v.lastSeen, appVersion: v.appVersion, homeService: !!v.homeService };
+  return {
+    lastSeen: v.lastSeen, appVersion: v.appVersion, homeService: !!v.homeService,
+    // undefined = an older TV that doesn't publish these yet
+    mediaAccess: typeof v.mediaAccess === 'boolean' ? v.mediaAccess : undefined,
+    typing: typeof v.typing === 'boolean' ? v.typing : undefined,
+  };
+}
+const num = (x, d = 0) => (typeof x === 'number' && Number.isFinite(x) ? x : d);
+const str = (x) => (typeof x === 'string' ? x : '');
+function normNowPlaying(v) {
+  const o = v && typeof v === 'object' ? v : {};
+  const state = o.state === 'playing' || o.state === 'paused' ? o.state : 'none';
+  const speed = num(o.speed, 1);
+  return {
+    state, pkg: str(o.pkg), app: str(o.app), title: str(o.title), subtitle: str(o.subtitle),
+    durationMs: Math.max(0, num(o.durationMs)), positionMs: Math.max(0, num(o.positionMs)),
+    positionAt: num(o.positionAt), speed: speed > 0 ? speed : 1,
+    canSeek: o.canSeek === true, canSkip: o.canSkip === true,
+  };
+}
+function normArt(v) { return typeof v === 'string' && v.startsWith('data:image/') ? v : null; }
+function normVolume(v) {
+  if (!v || typeof v !== 'object') return null;
+  const max = num(v.max);
+  if (max <= 0) return null;
+  return { level: Math.max(0, Math.min(max, num(v.level))), max, muted: v.muted === true };
+}
+function normSleep(v) { return v && typeof v === 'object' && num(v.at) > 0 ? { at: v.at } : null; }
+function normInput(v) {
+  const o = v && typeof v === 'object' ? v : {};
+  return { active: o.active === true, pkg: str(o.pkg), hint: str(o.hint), text: str(o.text) };
+}
+// First http(s) URL in a string (share-target text often wraps the link in prose).
+function firstUrl(s) {
+  const m = String(s || '').match(/https?:\/\/[^\s<>"'`]+/i);
+  if (!m) return null;
+  const u = m[0].replace(/[).,;:!?\]}»”’]+$/, '');
+  return validUrl(u) ? u : null;
+}
+function validUrl(s) {
+  if (typeof s !== 'string' || s.length > 2048) return false;
+  try { const u = new URL(s); return (u.protocol === 'http:' || u.protocol === 'https:') && !!u.hostname; } catch (e) { return false; }
+}
+function fmtTime(ms) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  const ss = String(s).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 }
 
 // ---------------------------------------------------------------- backends
-// Interface: subscribe({status, apps, layout, icons, offset, error}) -> unsubscribe(); send(cmd) -> Promise.
+// Interface: subscribe({status, apps, layout, icons, nowPlaying, art, volume, sleep, input, offset, error, notice?})
+//   -> unsubscribe(); send(cmd) -> Promise. (notice is demo-only.)
+const CMD_FIELDS = ['pkg', 'to', 'action', 'ms', 'minutes', 'url', 'text'];
 let fb = null;
 async function createFirebaseBackend(key) {
   if (!KEY_RE.test(key)) throw new Error('bad key');
@@ -490,13 +703,17 @@ async function createFirebaseBackend(key) {
         on(`${base}/tv/apps`, h.apps),
         on(`${base}/tv/layout`, h.layout),
         on(`${base}/tv/icons`, h.icons),
+        on(`${base}/tv/nowPlaying`, h.nowPlaying),
+        on(`${base}/tv/art`, h.art),
+        on(`${base}/tv/volume`, h.volume),
+        on(`${base}/tv/sleep`, h.sleep),
+        on(`${base}/tv/input`, h.input),
       ];
       return () => unsubs.forEach((u) => u());
     },
     send(cmd) {
       const body = { type: cmd.type, at: serverTimestamp() };
-      if (cmd.pkg != null) body.pkg = cmd.pkg;
-      if (cmd.to != null) body.to = cmd.to;
+      for (const f of CMD_FIELDS) if (cmd[f] != null) body[f] = cmd[f];
       return push(ref(db, `${base}/cmd`), body);
     },
   };
@@ -543,8 +760,56 @@ function createDemoBackend() {
   };
   layout.others = APPS.map((a) => a[0]).filter((p) => !layout.favorites.includes(p) && !layout.hidden.includes(p)).sort(byLabel);
   let online = true;
-  const status = () => ({ appVersion: 2, homeService: true, lastSeen: online ? Date.now() - 5000 : Date.now() - 200000 });
+  let mediaAccess = true;
+  const status = () => ({ appVersion: 3, homeService: true, mediaAccess, typing: true, lastSeen: online ? Date.now() - 5000 : Date.now() - 200000 });
   const subs = new Set();
+  const each = (fn) => subs.forEach(fn);
+
+  // ---- fake media session
+  const artFor = (a, b, glyph) => {
+    const c = document.createElement('canvas'); c.width = 320; c.height = 320;
+    const g = c.getContext('2d');
+    const gr = g.createLinearGradient(0, 0, 320, 320); gr.addColorStop(0, a); gr.addColorStop(1, b);
+    g.fillStyle = gr; g.fillRect(0, 0, 320, 320);
+    g.fillStyle = 'rgba(255,255,255,.9)'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '500 120px system-ui, sans-serif'; g.fillText(glyph, 160, 168);
+    return c.toDataURL('image/jpeg', 0.85);
+  };
+  const QUEUE = [
+    { pkg: 'com.spotify.tv.android', app: 'Spotify', title: 'Neon Harbour', subtitle: 'The Night Ferries', durationMs: 214000, canSeek: true, canSkip: true, art: artFor('#1DB954', '#0B3D20', '♪') },
+    { pkg: 'com.plexapp.android', app: 'Plex', title: 'Northern Lights: A Year in the Arctic', subtitle: 'Documentary', durationMs: 5520000, canSeek: true, canSkip: true, art: artFor('#3D5AFE', '#120B3D', '✦') },
+    { pkg: 'com.google.android.youtube.tv', app: 'YouTube', title: 'Rainy day radio', subtitle: 'Live', durationMs: 0, canSeek: false, canSkip: true, art: null },
+  ];
+  const media = { i: 0, state: 'playing', pos: 61000, at: Date.now() };
+  const mediaPos = () => {
+    const q = QUEUE[media.i];
+    let p = media.pos + (media.state === 'playing' ? Date.now() - media.at : 0);
+    if (q.durationMs) p = Math.min(p, q.durationMs);
+    return Math.max(0, p);
+  };
+  const setPos = (p) => { media.pos = p; media.at = Date.now(); };
+  const npWire = () => {
+    if (media.state === 'none') return { state: 'none' };
+    const q = QUEUE[media.i];
+    return { state: media.state, pkg: q.pkg, app: q.app, title: q.title, subtitle: q.subtitle, durationMs: q.durationMs,
+      positionMs: mediaPos(), positionAt: Date.now(), speed: 1, artHash: q.art ? 'demo' + media.i : '', canSeek: q.canSeek, canSkip: q.canSkip };
+  };
+  const publishMedia = () => {
+    const art = media.state !== 'none' ? QUEUE[media.i].art : null;
+    each((h) => { h.nowPlaying(npWire()); h.art(art); });
+  };
+  const skip = (d) => { media.i = (media.i + d + QUEUE.length) % QUEUE.length; setPos(0); if (media.state === 'none') media.state = 'playing'; };
+  // ---- volume, sleep, text box
+  const volume = { level: 8, max: 15, muted: false };
+  let sleepAt = 0, sleepTimer = 0;
+  const sleepWire = () => (sleepAt ? { at: sleepAt } : null);
+  const input = { active: false, pkg: 'com.plexapp.android', hint: 'Search Plex', text: '' };
+  const publishInput = () => each((h) => h.input(input.active ? { ...input } : { active: false }));
+  const notice = (msg, delay = 1200) => setTimeout(() => each((h) => h.notice && h.notice(msg)), delay);
+  const mediaTick = setInterval(() => {
+    const q = QUEUE[media.i];
+    if (media.state === 'playing' && q.durationMs && mediaPos() >= q.durationMs) { skip(1); publishMedia(); }
+  }, 1000);
   // Publish like RTDB would: fresh objects, empty arrays dropped.
   const wire = () => {
     const o = {};
@@ -557,6 +822,51 @@ function createDemoBackend() {
     const p = cmd.pkg;
     if (p && !label[p]) return;
     switch (cmd.type) {
+      case 'media': {
+        if (media.state === 'none') { if (cmd.action === 'play' || cmd.action === 'toggle') { media.state = 'playing'; setPos(0); publishMedia(); } return; }
+        const q = QUEUE[media.i];
+        const p0 = mediaPos();
+        if (cmd.action === 'toggle') { setPos(p0); media.state = media.state === 'playing' ? 'paused' : 'playing'; }
+        else if (cmd.action === 'play') { setPos(p0); media.state = 'playing'; }
+        else if (cmd.action === 'pause') { setPos(p0); media.state = 'paused'; }
+        else if (cmd.action === 'next' && q.canSkip) skip(1);
+        else if (cmd.action === 'prev' && q.canSkip) { if (p0 > 3000) setPos(0); else skip(-1); }
+        else if (cmd.action === 'seek' && q.canSeek) setPos(Math.max(0, Math.min(q.durationMs || Infinity, p0 + (Number(cmd.ms) || 0))));
+        else return;
+        publishMedia();
+        return;
+      }
+      case 'volume':
+        if (cmd.action === 'up') { volume.level = Math.min(volume.max, volume.level + 1); volume.muted = false; }
+        else if (cmd.action === 'down') { volume.level = Math.max(0, volume.level - 1); volume.muted = false; }
+        else if (cmd.action === 'mute') volume.muted = !volume.muted;
+        else return;
+        each((h) => h.volume({ ...volume }));
+        return;
+      case 'sleep': {
+        const m = Math.max(0, Math.min(240, Math.round(Number(cmd.minutes) || 0)));
+        clearTimeout(sleepTimer);
+        sleepAt = m ? Date.now() + m * 60000 : 0;
+        if (m) sleepTimer = setTimeout(() => {
+          sleepAt = 0;
+          if (media.state === 'playing') { setPos(mediaPos()); media.state = 'paused'; publishMedia(); }
+          each((h) => h.sleep(null));
+          notice('Demo TV: sleep timer ended, playback paused', 0);
+        }, m * 60000);
+        each((h) => h.sleep(sleepWire()));
+        return;
+      }
+      case 'open': notice(`Demo TV opened ${cmd.url}`); return;
+      case 'text':
+        if (!input.active) return;
+        input.text = String(cmd.text || '').slice(0, 500);
+        publishInput();
+        return;
+      case 'submit':
+        if (!input.active) return;
+        notice(`Demo TV searched for “${input.text}”`, 0);
+        setTimeout(() => { input.active = false; input.text = ''; publishInput(); }, 400);
+        return;
       case 'favorite': if (!layout.favorites.includes(p)) { without(p); layout.favorites.push(p); } break;
       case 'unfavorite': if (layout.favorites.includes(p)) { without(p); layout.others.push(p); layout.others.sort(byLabel); } break;
       case 'hide': without(p); layout.hidden.push(p); layout.hidden.sort(byLabel); break;
@@ -576,12 +886,25 @@ function createDemoBackend() {
     log: [],
     setOnline(b) { online = !!b; subs.forEach((h) => h.status(status())); },
     clearApps() { layout.favorites = []; layout.others = []; layout.hidden = []; publishLayout(); },
+    setMediaAccess(b) { mediaAccess = !!b; each((h) => h.status(status())); },
+    stopMedia() { media.state = 'none'; publishMedia(); },
+    playMedia(i = 0) { media.i = i % QUEUE.length; media.state = 'playing'; setPos(0); publishMedia(); },
+    toggleInput() {
+      input.active = !input.active; input.text = input.active ? 'star' : '';
+      publishInput();
+      return input.active;
+    },
+    get inputActive() { return input.active; },
     layout,
     subscribe(h) {
       subs.add(h);
-      setTimeout(() => { h.offset(0); h.status(status()); h.apps(structuredClone(apps)); h.icons({ ...icons }); h.layout(wire()); }, 250);
+      setTimeout(() => {
+        h.offset(0); h.status(status()); h.apps(structuredClone(apps)); h.icons({ ...icons }); h.layout(wire());
+        h.nowPlaying(npWire()); h.art(media.state !== 'none' ? QUEUE[media.i].art : null);
+        h.volume({ ...volume }); h.sleep(sleepWire()); h.input(input.active ? { ...input } : { active: false });
+      }, 250);
       const t = setInterval(() => h.status(status()), 60000);
-      return () => { clearInterval(t); subs.delete(h); };
+      return () => { clearInterval(t); subs.delete(h); if (!subs.size) { clearInterval(mediaTick); clearTimeout(sleepTimer); } };
     },
     send(cmd) {
       api.log.push({ ...cmd, at: Date.now() });
@@ -599,6 +922,8 @@ const S = {
   status: null, statusSeen: false, offset: 0,
   apps: {}, icons: {}, layout: normLayout(null), layoutLoaded: false, layoutSig: '',
   pending: new Map(), search: '', hiddenOpen: false,
+  np: normNowPlaying(null), art: null, volume: null, sleep: null, input: normInput(null),
+  pendingShare: null,
 };
 let session = 0;
 
@@ -748,9 +1073,15 @@ async function connect(key) {
   S.backend = backend;
   S.unsub = backend.subscribe({
     offset: (v) => { if (my !== session) return; S.offset = v; renderChip(); },
-    status: (v) => { if (my !== session) return; S.status = normStatus(v); S.statusSeen = true; renderChip(); },
-    apps: (v) => { if (my !== session) return; S.apps = normApps(v); renderContent(); },
-    icons: (v) => { if (my !== session) return; S.icons = normIcons(v); renderContent(); },
+    status: (v) => { if (my !== session) return; S.status = normStatus(v); S.statusSeen = true; renderChip(); renderNowPlaying(); flushShare(); },
+    nowPlaying: (v) => { if (my !== session) return; S.np = normNowPlaying(v); renderNowPlaying(); },
+    art: (v) => { if (my !== session) return; S.art = normArt(v); renderNowPlaying(); },
+    volume: (v) => { if (my !== session) return; S.volume = normVolume(v); renderVolume(); },
+    sleep: (v) => { if (my !== session) return; S.sleep = normSleep(v); renderSleep(); },
+    input: (v) => { if (my !== session) return; onInput(normInput(v)); },
+    notice: (msg) => { if (my !== session) return; snack(msg); },
+    apps: (v) => { if (my !== session) return; S.apps = normApps(v); renderContent(); renderNowPlaying(); },
+    icons: (v) => { if (my !== session) return; S.icons = normIcons(v); renderContent(); renderNowPlaying(); },
     layout: (v) => {
       if (my !== session) return;
       S.layout = normLayout(v);
@@ -770,8 +1101,11 @@ function disconnect() {
   S.status = null; S.statusSeen = false; S.offset = 0;
   S.apps = {}; S.icons = {}; S.layout = normLayout(null); S.layoutLoaded = false; S.layoutSig = '';
   clearPending(); S.search = ''; $('searchInput').value = ''; S.hiddenOpen = false;
+  S.np = normNowPlaying(null); S.art = null; S.volume = null; S.sleep = null; S.input = normInput(null);
   endDrag(true);
   releaseHold();
+  closeSheet(true);
+  renderNowPlaying(); renderVolume(); renderSleep();
 }
 function unpair() {
   disconnect();
@@ -782,7 +1116,13 @@ function unpair() {
 $('menuBtn').innerHTML = icon('more');
 $('menuBtn').addEventListener('click', (e) => {
   if (menuOpenFor === e.currentTarget) { closeMenu(); return; }
+  const demoItems = DEMO && window.loungeDemo ? [{
+    label: window.loungeDemo.inputActive ? 'Simulate TV text box (on)' : 'Simulate TV text box',
+    onClick: () => { const on = window.loungeDemo.toggleInput(); snack(on ? 'Demo TV: text box selected' : 'Demo TV: text box closed'); },
+  }] : [];
   openMenu(e.currentTarget, [
+    { label: 'Send a link', onClick: () => openSheet('link') },
+    ...demoItems,
     { label: 'Patch notes', onClick: showPatchNotes },
     { label: 'Unpair', danger: true, onClick: () => openDialog({
       title: 'Unpair this phone?',
@@ -814,23 +1154,276 @@ function setPending(pkg) {
   clearTimeout(S.pending.get(pkg));
   S.pending.set(pkg, setTimeout(() => { S.pending.delete(pkg); renderContent(); }, PENDING_MS));
 }
-function send(type, pkg, to) {
-  if (!S.backend) { snack("Not connected yet. Try again in a moment."); return; }
-  const online = onlineState() === 'online';
-  if (!online) snack('TV is offline');
-  else if (type === 'launch') snack(`Opening ${labelOf(pkg)} on TV`);
-  if (pkg) setPending(pkg);
-  const cmd = { type };
-  if (pkg) cmd.pkg = pkg;
-  if (to != null) cmd.to = to;
-  Promise.resolve().then(() => S.backend.send(cmd)).catch((err) => {
+// Every command goes through here: offline → "TV is offline" snackbar (the command is still sent;
+// the TV drops it if it's stale by the time it comes back). Returns false when there is no backend yet.
+function sendCmd(cmd, okMsg) {
+  if (!S.backend) { snack("Not connected yet. Try again in a moment."); return false; }
+  if (onlineState() !== 'online') snack('TV is offline');
+  else if (okMsg) snack(okMsg);
+  const backend = S.backend;
+  Promise.resolve().then(() => backend.send(cmd)).catch((err) => {
     console.warn('Lounge Remote: send failed', err);
     snack("Couldn't send that to the TV");
   });
-  if (pkg) renderContent();
+  return true;
+}
+function send(type, pkg, to) {
+  const cmd = { type };
+  if (pkg) cmd.pkg = pkg;
+  if (to != null) cmd.to = to;
+  if (!sendCmd(cmd, type === 'launch' ? `Opening ${labelOf(pkg)} on TV` : null)) return;
+  if (pkg) { setPending(pkg); renderContent(); }
 }
 $('homeBtn').addEventListener('click', () => send('home'));
 $('backBtn').addEventListener('click', () => send('back'));
+
+// ---------------------------------------------------------------- now playing
+const serverNow = () => Date.now() + S.offset;
+function npPosition(np) {
+  let p = np.positionMs;
+  if (np.state === 'playing' && np.positionAt > 0) p += Math.max(0, serverNow() - np.positionAt) * np.speed;
+  if (np.durationMs > 0) p = Math.min(p, np.durationMs);
+  return Math.max(0, p);
+}
+let npArtKey = '';
+function renderNowPlaying() {
+  const np = S.np;
+  const st = S.status;
+  const noAccess = !!st && st.mediaAccess === false;
+  const none = noAccess || np.state === 'none';
+  $('npQuiet').hidden = !none;
+  $('npFull').hidden = none;
+  $('npCard').classList.toggle('quiet', none);
+  $('npQuietText').textContent = noAccess ? 'Turn on Now Playing access on the TV (Settings → Phone remote)' : 'Nothing playing';
+  if (none) { npArtKey = ''; return; }
+  const app = np.app || (np.pkg ? labelOf(np.pkg) : '');
+  $('npTitle').textContent = np.title || app || 'Playing';
+  $('npSub').textContent = [np.subtitle, app].filter(Boolean).join(' · ');
+  $('npSub').hidden = !$('npSub').textContent;
+  // Art: tv/art, else the app's icon, else a glyph. Only touch the DOM when it changes.
+  const iconSrc = np.pkg ? S.icons[pkgKey(np.pkg)] : null;
+  const artKey = S.art ? 'a:' + S.art.length + S.art.slice(-32) : iconSrc ? 'i:' + np.pkg : 'g';
+  if (artKey !== npArtKey) {
+    npArtKey = artKey;
+    $('npArt').innerHTML = S.art ? `<img alt="" src="${esc(S.art)}">`
+      : iconSrc ? `<img class="np-icon" alt="" src="${esc(iconSrc)}">` : icon('music');
+  }
+  const playing = np.state === 'playing';
+  $('npPlay').innerHTML = icon(playing ? 'pause' : 'play');
+  $('npPlay').setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  document.querySelectorAll('[data-media="back10"],[data-media="fwd10"]').forEach((b) => { b.hidden = !np.canSeek; });
+  document.querySelectorAll('[data-media="prev"],[data-media="next"]').forEach((b) => { b.hidden = !np.canSkip; });
+  $('npProg').hidden = !(np.durationMs > 0);
+  renderProgress();
+}
+function renderProgress() {
+  const np = S.np;
+  if (np.state === 'none' || !(np.durationMs > 0) || $('npFull').hidden) return;
+  const p = npPosition(np);
+  $('npBar').style.width = (100 * p / np.durationMs).toFixed(2) + '%';
+  $('npEl').textContent = fmtTime(p);
+  $('npTot').textContent = fmtTime(np.durationMs);
+}
+$('npCard').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-media]'); if (!b) return;
+  const a = b.dataset.media;
+  if (a === 'back10') sendCmd({ type: 'media', action: 'seek', ms: -10000 });
+  else if (a === 'fwd10') sendCmd({ type: 'media', action: 'seek', ms: 10000 });
+  else sendCmd({ type: 'media', action: a });
+});
+
+// ---------------------------------------------------------------- volume
+function renderVolume() {
+  const v = S.volume;
+  const bar = $('volBar');
+  bar.firstElementChild.style.width = v ? (100 * v.level / v.max).toFixed(1) + '%' : '0%';
+  bar.classList.toggle('muted', !!(v && v.muted));
+  bar.setAttribute('aria-valuemax', String(v ? v.max : 0));
+  bar.setAttribute('aria-valuenow', String(v ? v.level : 0));
+  const muted = !!(v && v.muted);
+  $('muteBtn').innerHTML = icon(muted ? 'muted' : 'volume');
+  $('muteBtn').classList.toggle('on', muted);
+  $('muteBtn').setAttribute('aria-label', muted ? 'Unmute' : 'Mute');
+  $('muteBtn').setAttribute('aria-pressed', String(muted));
+}
+document.querySelector('.vol-row').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-vol]'); if (!b) return;
+  sendCmd({ type: 'volume', action: b.dataset.vol });
+});
+
+// ---------------------------------------------------------------- sleep
+function sleepLeftMin() {
+  if (!S.sleep) return 0;
+  const left = S.sleep.at - serverNow();
+  return left > 0 ? Math.ceil(left / 60000) : 0;
+}
+function renderSleep() {
+  const m = sleepLeftMin();
+  $('sleepChip').classList.toggle('armed', m > 0);
+  $('sleepChipText').textContent = m > 0 ? `Sleep · ${m} min` : 'Sleep';
+  if (sheetKind === 'sleep') {
+    $('sheetSub').textContent = m > 0 ? `The TV will pause and sleep in ${m} min.` : 'Pause playback and send the TV to its screensaver after:';
+    document.querySelectorAll('.sleep-opt[data-min="0"]').forEach((b) => b.classList.toggle('sel', m === 0));
+  }
+}
+$('sleepChip').addEventListener('click', () => openSheet('sleep'));
+$('sheetSleep').addEventListener('click', (e) => {
+  const b = e.target.closest('.sleep-opt'); if (!b) return;
+  if (b.dataset.min === 'custom') {
+    $('sleepCustom').hidden = false; $('sleepErr').hidden = true;
+    $('sleepMin').focus();
+    return;
+  }
+  setSleep(Number(b.dataset.min));
+});
+$('sleepCustom').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const raw = $('sleepMin').value.trim();
+  const m = Number(raw);
+  const ok = raw !== '' && Number.isInteger(m) && m >= 1 && m <= 240;
+  $('sleepErr').hidden = ok;
+  $('sleepMin').classList.toggle('invalid', !ok);
+  if (ok) setSleep(m);
+});
+$('sleepMin').addEventListener('input', () => { $('sleepErr').hidden = true; $('sleepMin').classList.remove('invalid'); });
+function setSleep(minutes) {
+  if (sendCmd({ type: 'sleep', minutes }, minutes ? `Sleep timer set for ${minutes} min` : 'Sleep timer off')) closeSheet();
+}
+
+// ---------------------------------------------------------------- keyboard (type into the TV)
+const KB_DEBOUNCE = 200;
+const KB_QUIET = 2000;
+let kbTimer = 0;
+let kbLastTyped = 0;
+function renderKbHead() {
+  const inp = S.input;
+  $('sheetTitle').textContent = inp.active ? `Typing into ${inp.pkg ? labelOf(inp.pkg) : 'the TV'}` : 'Type on the TV';
+  const sub = $('sheetSub');
+  sub.hidden = inp.active;
+  sub.textContent = 'Nothing selected on the TV';
+  $('kbInput').placeholder = inp.active ? (inp.hint || 'Type here') : 'Select a text box on the TV first';
+}
+function onInput(next) {
+  const was = S.input.active;
+  S.input = next;
+  if (next.active && !was) {
+    if (sheetKind !== 'kb') { if (!sheetKind) openSheet('kb'); }
+    else { renderKbHead(); }
+  } else if (!next.active && was) {
+    if (sheetKind === 'kb' && Date.now() - kbLastTyped > KB_QUIET) closeSheet();
+    else if (sheetKind === 'kb') renderKbHead();
+    return;
+  }
+  if (sheetKind === 'kb') {
+    renderKbHead();
+    const f = $('kbInput');
+    if (next.active && Date.now() - kbLastTyped > KB_QUIET && f.value !== next.text) f.value = next.text;
+  }
+}
+function flushKb() {
+  if (!kbTimer) return;
+  clearTimeout(kbTimer); kbTimer = 0;
+  sendCmd({ type: 'text', text: $('kbInput').value.slice(0, 500) });
+}
+$('kbInput').addEventListener('input', () => {
+  kbLastTyped = Date.now();
+  clearTimeout(kbTimer);
+  kbTimer = setTimeout(() => { kbTimer = 0; sendCmd({ type: 'text', text: $('kbInput').value.slice(0, 500) }); }, KB_DEBOUNCE);
+});
+$('sheetKb').addEventListener('submit', (e) => {
+  e.preventDefault();
+  flushKb();
+  kbLastTyped = 0; // let the sheet close once the TV drops the text box
+  sendCmd({ type: 'submit' });
+});
+$('typeChip').addEventListener('click', () => openSheet('kb'));
+
+// ---------------------------------------------------------------- send a link / share target
+function setLinkError(on) {
+  $('linkErr').hidden = !on;
+  $('linkInput').classList.toggle('invalid', on);
+  $('linkInput').setAttribute('aria-invalid', on ? 'true' : 'false');
+}
+$('linkInput').addEventListener('input', () => setLinkError(false));
+$('sheetLink').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const raw = $('linkInput').value.trim();
+  const u = validUrl(raw) ? raw : firstUrl(raw);
+  if (!u) { setLinkError(true); $('linkInput').focus(); return; }
+  if (sendCmd({ type: 'open', url: u }, 'Opening on TV')) { $('linkInput').value = ''; closeSheet(); }
+});
+$('linkChip').addEventListener('click', () => openSheet('link'));
+// A shared link waits until we're paired and have heard from the TV once (so offline is reported correctly).
+function flushShare() {
+  if (!S.pendingShare || !S.backend || !S.statusSeen) return;
+  const u = S.pendingShare;
+  S.pendingShare = null;
+  sendCmd({ type: 'open', url: u }, 'Opening on TV');
+}
+function takeShareParams() {
+  const q = new URLSearchParams(location.search);
+  const names = ['url', 'text', 'title'];
+  if (!names.some((n) => q.has(n))) return { found: false };
+  let u = null;
+  for (const n of names) { u = firstUrl(q.get(n)); if (u) break; }
+  for (const n of names) q.delete(n);
+  const rest = q.toString();
+  history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash);
+  return { found: true, url: u };
+}
+
+// ---------------------------------------------------------------- bottom sheet
+let sheetKind = null;
+let sheetReturnFocus = null;
+const SHEETS = { sleep: 'sheetSleep', kb: 'sheetKb', link: 'sheetLink' };
+function openSheet(kind) {
+  closeMenu();
+  if ($('dlg').open) $('dlg').close();
+  if (sheetKind === 'kb' && kind !== 'kb') flushKb();
+  sheetKind = kind;
+  for (const [k, id] of Object.entries(SHEETS)) $(id).hidden = k !== kind;
+  const sub = $('sheetSub');
+  if (kind === 'sleep') {
+    $('sheetTitle').textContent = 'Sleep timer';
+    sub.hidden = false;
+    $('sleepCustom').hidden = true; $('sleepErr').hidden = true; $('sleepMin').value = ''; $('sleepMin').classList.remove('invalid');
+    renderSleep();
+  } else if (kind === 'kb') {
+    renderKbHead();
+    $('kbInput').value = S.input.active ? S.input.text : '';
+    kbLastTyped = 0;
+  } else if (kind === 'link') {
+    $('sheetTitle').textContent = 'Send a link';
+    sub.hidden = false; sub.textContent = 'Paste a YouTube, Netflix, Spotify or any web link to open it on the TV.';
+    setLinkError(false);
+  }
+  if (!$('sheet').classList.contains('open')) sheetReturnFocus = document.activeElement;
+  $('sheet').classList.add('open'); $('sheetScrim').classList.add('open');
+  const f = kind === 'kb' ? $('kbInput') : kind === 'link' ? $('linkInput') : $('sheetSleep').querySelector('.sleep-opt');
+  setTimeout(() => { if (sheetKind === kind && f) f.focus({ preventScroll: true }); }, 60);
+}
+function closeSheet(silent) {
+  if (!sheetKind) return;
+  if (sheetKind === 'kb') { if (silent) { clearTimeout(kbTimer); kbTimer = 0; } else flushKb(); }
+  sheetKind = null;
+  $('sheet').classList.remove('open'); $('sheetScrim').classList.remove('open');
+  const el = document.activeElement;
+  if (el && $('sheet').contains(el)) el.blur();
+  if (!silent && sheetReturnFocus && sheetReturnFocus.focus && document.contains(sheetReturnFocus)) {
+    try { sheetReturnFocus.focus({ preventScroll: true }); } catch (e) {}
+  }
+  sheetReturnFocus = null;
+}
+$('sheetScrim').addEventListener('click', () => closeSheet());
+$('sheet').addEventListener('click', (e) => { if (e.target.closest('[data-close]')) closeSheet(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheetKind && !menuOpenFor) closeSheet(); });
+
+// Live bits: progress while playing, sleep countdown.
+setInterval(() => {
+  if (!S.key) return;
+  if (S.np.state === 'playing') renderProgress();
+  renderSleep();
+}, 1000);
 
 // ---------------------------------------------------------------- rendering
 function artHTML(pkg) {
@@ -1080,7 +1673,16 @@ addEventListener('hashchange', () => {
   else if (!S.key) { showPair(h.raw); setKeyError(true); }
 });
 
+// Share target (?title=&text=&url=): queue the first http(s) link, strip the params.
+const shared = takeShareParams();
+if (shared.found) {
+  if (shared.url) S.pendingShare = shared.url;
+  else setTimeout(() => snack('No link to send'), 0);
+}
+
+renderNowPlaying(); renderVolume(); renderSleep();
 const stored = parseKey(lsGet(LS_KEY));
+if (shared.url && !stored) setTimeout(() => snack('Pair with your TV to send this link'), 0);
 if (stored) connect(stored);
 else {
   showPair(hashRejected ? (() => { try { return decodeURIComponent(hashRejected); } catch (e) { return hashRejected; } })() : '');

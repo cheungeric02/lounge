@@ -11,8 +11,8 @@
 - `local.properties` — `sdk.dir` (gitignored, per machine)
 - `.github/workflows/release.yml` — CI: test + lint + assembleRelease (uses runner's preinstalled SDK, no setup-android); on main also signs, cross-checks APK versionCode == APP_VERSION, builds `site/` (lounge.apk, version.json via jq, index.html from template, sha256 self-check, copies `remote/` to `site/remote/`) and deploys Pages
 - `remote/` — Lounge Remote phone web app (CI copies it to `site/remote/` → `/lounge/remote/`):
-  - `index.html` — single-file app (inline CSS + JS module): pairing (#k= / typed key), Firebase adapter (tv/* read, cmd/* push), `?demo=1` in-memory fake TV, favorites drag-reorder, all-apps grid + search, hidden, theme toggle, APP_VERSION + PATCH_NOTES + What's New gate
-  - `manifest.webmanifest` — PWA manifest (scope/start_url `/lounge/remote/`)
+  - `index.html` — single-file app (inline CSS + JS module): pairing (#k= / typed key), Firebase adapter (tv/* read, cmd/* push), `?demo=1` in-memory fake TV, favorites drag-reorder, all-apps grid + search, hidden, theme toggle, APP_VERSION + PATCH_NOTES + What's New gate; v3: Now Playing card (tv/nowPlaying + tv/art, live position extrapolation, transport), volume row (tv/volume), Sleep/Type/Send link chips + bottom sheets (sleep, keyboard auto-open from tv/input, send link), share-target param handling, demo fake media/volume/sleep/text box
+  - `manifest.webmanifest` — PWA manifest (scope/start_url `/lounge/remote/`, `share_target` GET title/text/url → `/lounge/remote/`)
   - `sw.js` — service worker, cache `lounge-remote-vN` (N = APP_VERSION); network-first index.html, cache-first icons, never Firebase
   - `icons/` — icon-192.png, icon-512.png, icon-maskable-512.png
 - `.claude/launch.json` — local preview server for `remote/` (port 5180)
