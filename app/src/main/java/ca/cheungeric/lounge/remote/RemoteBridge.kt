@@ -342,10 +342,16 @@ class RemoteBridge(
         s.powerKick.trySend(Unit)
     }
 
-    private suspend fun key(k: RemoteCommand.KeyName) {
+    /** v7: phone Home also puts the TV on the box's HDMI port (no-op without Bravia control). */
+    private fun showBoxInput(s: Session) {
+        if (bravia.isConfigured) tvControl(s, "home input") { input(s, bravia.boxPort) }
+    }
+
+    private suspend fun key(s: Session, k: RemoteCommand.KeyName) {
         when (k) {
             RemoteCommand.KeyName.Back -> withContext(Dispatchers.Main) { HomeButtonService.performBack() }
             RemoteCommand.KeyName.Home -> withContext(Dispatchers.Main) {
+                showBoxInput(s)
                 app.startActivity(HomeButtonService.loungeIntent(app))
             }
             else -> withContext(Dispatchers.Main) { HomeButtonService.dpad(k) }
@@ -699,6 +705,7 @@ class RemoteBridge(
                 }
             }
             RemoteCommand.Home -> withContext(Dispatchers.Main) {
+                showBoxInput(s)
                 app.startActivity(HomeButtonService.loungeIntent(app))
             }
             RemoteCommand.Back -> withContext(Dispatchers.Main) { HomeButtonService.performBack() }
@@ -724,7 +731,7 @@ class RemoteBridge(
             // LAN calls can take seconds: run them off the command queue so D-pad keys never wait.
             is RemoteCommand.Power -> tvControl(s, "power") { power(s, cmd.action) }
             is RemoteCommand.Input -> tvControl(s, "input") { input(s, cmd.port) }
-            is RemoteCommand.Key -> key(cmd.key)
+            is RemoteCommand.Key -> key(s, cmd.key)
         }
     }
 

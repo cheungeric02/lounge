@@ -102,6 +102,7 @@ class MainActivity : ComponentActivity() {
     /** v5 Settings → TV power control: saved values + Save/Test feedback. */
     private var braviaIp by mutableStateOf("")
     private var braviaPsk by mutableStateOf("")
+    private var braviaBoxPort by mutableIntStateOf(2)
     private var braviaTest by mutableStateOf<BraviaTestState>(BraviaTestState.Idle)
     /** versionCode the user chose "Later" for this session (UpdateManager.dismiss() keeps Available). */
     private var updateLaterFor by mutableStateOf<Int?>(null)
@@ -126,6 +127,7 @@ class MainActivity : ComponentActivity() {
         remoteEnabled = bridge.isEnabled
         val bravia = container.braviaControl
         braviaIp = bravia.ip
+        braviaBoxPort = bravia.boxPort
         braviaPsk = bravia.psk
         homeTipDismissed = readTipDismissed()
         homeServiceEnabled = HomeServiceStatus.isEnabled(this)
@@ -270,6 +272,11 @@ class MainActivity : ComponentActivity() {
                                 braviaIp = braviaIp,
                                 braviaPsk = braviaPsk,
                                 braviaTest = braviaTest,
+                                braviaBoxPort = braviaBoxPort,
+                                onBraviaBoxPort = { p ->
+                                    bravia.saveBoxPort(p)
+                                    braviaBoxPort = bravia.boxPort
+                                },
                                 onBraviaSave = { ip, psk ->
                                     bravia.save(ip, psk)
                                     braviaIp = bravia.ip

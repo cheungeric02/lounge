@@ -86,6 +86,8 @@ fun SettingsScreen(
     braviaIp: String,
     braviaPsk: String,
     braviaTest: BraviaTestState,
+    braviaBoxPort: Int,
+    onBraviaBoxPort: (Int) -> Unit,
     onBraviaSave: (ip: String, psk: String) -> Unit,
     onBraviaTest: (ip: String, psk: String) -> Unit,
     ambientMinutes: Int,
@@ -150,7 +152,7 @@ fun SettingsScreen(
         }
 
         Section(stringResource(R.string.settings_tv_power)) {
-            TvPowerSection(braviaIp, braviaPsk, braviaTest, onBraviaSave, onBraviaTest)
+            TvPowerSection(braviaIp, braviaPsk, braviaTest, braviaBoxPort, onBraviaBoxPort, onBraviaSave, onBraviaTest)
         }
 
         Section(stringResource(R.string.settings_ambient)) {
@@ -434,12 +436,28 @@ private fun TvPowerSection(
     savedIp: String,
     savedPsk: String,
     test: BraviaTestState,
+    boxPort: Int,
+    onBoxPort: (Int) -> Unit,
     onSave: (ip: String, psk: String) -> Unit,
     onTest: (ip: String, psk: String) -> Unit,
 ) {
     var ip by remember(savedIp) { mutableStateOf(savedIp) }
     var psk by remember(savedPsk) { mutableStateOf(savedPsk) }
 
+    Text(
+        stringResource(R.string.settings_box_port),
+        style = MaterialTheme.typography.titleLarge,
+        color = LoungeColors.OnSurfaceVariant,
+    )
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        (1..4).forEach { p ->
+            LoungeButton(
+                stringResource(R.string.settings_box_port_n, p),
+                onClick = { onBoxPort(p) },
+                primary = p == boxPort,
+            )
+        }
+    }
     SettingsTextField(stringResource(R.string.settings_bravia_ip), ip, { ip = it }, KeyboardType.Uri, mask = false)
     SettingsTextField(stringResource(R.string.settings_bravia_psk), psk, { psk = it }, KeyboardType.Ascii, mask = true)
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {

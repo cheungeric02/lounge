@@ -1,7 +1,7 @@
 package ca.cheungeric.lounge.ui.patchnotes
 
 /** Integer build number. Single source of truth: Gradle reads this line for versionCode/versionName. */
-const val APP_VERSION = 6
+const val APP_VERSION = 7
 
 data class PatchNote(
     val v: Int,
@@ -12,6 +12,14 @@ data class PatchNote(
 
 /** Newest first. Add an entry every release and bump [APP_VERSION]. */
 val PATCH_NOTES = listOf(
+    PatchNote(
+        7,
+        "2026-11-08",
+        "Home from your phone switches the TV",
+        listOf(
+            "Pressing Home in Lounge Remote now also switches the TV to the HDMI port this box is on, then opens Lounge. Choose the port in Settings → TV power control (default HDMI 2).",
+        ),
+    ),
     PatchNote(
         6,
         "2026-11-05",

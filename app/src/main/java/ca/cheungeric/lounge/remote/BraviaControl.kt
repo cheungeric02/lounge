@@ -45,6 +45,22 @@ class BraviaControl(context: Context) {
     val psk: String get() = read(KEY_PSK) ?: ""
     private val mac: String? get() = read(KEY_MAC)?.let(BraviaRpc::normalizeMac)
 
+    /** HDMI port (1–4) the TV box is plugged into; phone Home switches the TV to it. */
+    val boxPort: Int get() = try {
+        prefs.getInt(KEY_BOX_PORT, DEFAULT_BOX_PORT).takeIf { it in 1..4 } ?: DEFAULT_BOX_PORT
+    } catch (_: Throwable) {
+        DEFAULT_BOX_PORT
+    }
+
+    fun saveBoxPort(port: Int) {
+        if (port !in 1..4) return
+        try {
+            prefs.edit().putInt(KEY_BOX_PORT, port).apply()
+        } catch (t: Throwable) {
+            log("saveBoxPort", t)
+        }
+    }
+
     val isConfigured: Boolean get() = psk.isNotBlank() && BraviaRpc.isValidIp(ip)
 
     /** Saves IP + PSK (trimmed). A changed IP or key forgets the cached MAC and the last result. */
@@ -238,6 +254,8 @@ class BraviaControl(context: Context) {
         const val KEY_IP = "lounge_braviaIp"
         const val KEY_PSK = "lounge_braviaPsk"
         const val KEY_MAC = "lounge_braviaMac"
+        const val KEY_BOX_PORT = "lounge_braviaBoxPort"
+        const val DEFAULT_BOX_PORT = 2
         private const val TIMEOUT_MS = 3_000
         private const val MAX_BODY = 64 * 1024
         private const val WOL_PORT = 9

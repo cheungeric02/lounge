@@ -58,6 +58,8 @@
     <string name="settings_media_access_steps">On the TV: Settings → Apps → Special app access → Notification access → Lounge.</string>
     <string name="remote_cant_open_link">Can\'t open that link on this TV</string>
     <!-- v5: TV power control (Bravia IP control) -->
+    <string name="settings_box_port">Which HDMI port is this TV box on? Home on the phone switches the TV to it.</string>
+    <string name="settings_box_port_n">HDMI %1$d</string>
     <string name="settings_tv_power">TV power control</string>
     <string name="settings_bravia_ip">Bravia IP address</string>
     <string name="settings_bravia_psk">Pre-Shared Key</string>
