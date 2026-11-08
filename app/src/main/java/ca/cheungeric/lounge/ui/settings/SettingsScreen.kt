@@ -116,6 +116,27 @@ fun SettingsScreen(
             color = LoungeColors.OnSurface,
         )
 
+        Section(stringResource(R.string.settings_updates)) {
+            Text(
+                stringResource(R.string.settings_current_version, appVersion),
+                style = MaterialTheme.typography.titleLarge,
+                color = LoungeColors.OnSurfaceVariant,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LoungeButton(
+                    stringResource(R.string.settings_check_updates),
+                    onClick = onCheckForUpdates,
+                    modifier = Modifier.focusRequester(firstButton),
+                )
+                if (canInstall(updateState)) {
+                    LoungeButton(stringResource(R.string.banner_install), onClick = onInstallUpdate, primary = true)
+                }
+            }
+            updateStatusText(updateState)?.let {
+                Text(it, style = MaterialTheme.typography.titleLarge, color = LoungeColors.OnSurface)
+            }
+        }
+
         Section(stringResource(R.string.settings_home_button)) {
             Text(
                 stringResource(if (homeServiceEnabled) R.string.settings_home_on else R.string.settings_home_off),
@@ -125,7 +146,6 @@ fun SettingsScreen(
             LoungeButton(
                 stringResource(R.string.settings_open_accessibility),
                 onClick = onOpenAccessibility,
-                modifier = Modifier.focusRequester(firstButton),
             )
             Text(
                 stringResource(R.string.settings_home_steps),
@@ -149,10 +169,6 @@ fun SettingsScreen(
                 mediaAccessGranted = mediaAccessGranted,
                 onOpenMediaAccess = onOpenMediaAccess,
             )
-        }
-
-        Section(stringResource(R.string.settings_tv_power)) {
-            TvPowerSection(braviaIp, braviaPsk, braviaTest, braviaBoxPort, onBraviaBoxPort, onBraviaSave, onBraviaTest)
         }
 
         Section(stringResource(R.string.settings_ambient)) {
@@ -189,23 +205,6 @@ fun SettingsScreen(
                         primary = st == background.ambientStyle,
                     )
                 }
-            }
-        }
-
-        Section(stringResource(R.string.settings_updates)) {
-            Text(
-                stringResource(R.string.settings_current_version, appVersion),
-                style = MaterialTheme.typography.titleLarge,
-                color = LoungeColors.OnSurfaceVariant,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                LoungeButton(stringResource(R.string.settings_check_updates), onClick = onCheckForUpdates)
-                if (canInstall(updateState)) {
-                    LoungeButton(stringResource(R.string.banner_install), onClick = onInstallUpdate, primary = true)
-                }
-            }
-            updateStatusText(updateState)?.let {
-                Text(it, style = MaterialTheme.typography.titleLarge, color = LoungeColors.OnSurface)
             }
         }
 
@@ -260,6 +259,10 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.titleMedium,
                 color = LoungeColors.TertiaryText,
             )
+        }
+
+        Section(stringResource(R.string.settings_tv_power)) {
+            TvPowerSection(braviaIp, braviaPsk, braviaTest, braviaBoxPort, onBraviaBoxPort, onBraviaSave, onBraviaTest)
         }
     }
 }

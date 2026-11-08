@@ -1,7 +1,7 @@
 package ca.cheungeric.lounge.ui.patchnotes
 
 /** Integer build number. Single source of truth: Gradle reads this line for versionCode/versionName. */
-const val APP_VERSION = 7
+const val APP_VERSION = 8
 
 data class PatchNote(
     val v: Int,
@@ -12,6 +12,14 @@ data class PatchNote(
 
 /** Newest first. Add an entry every release and bump [APP_VERSION]. */
 val PATCH_NOTES = listOf(
+    PatchNote(
+        8,
+        "2026-11-08",
+        "Settings reordered",
+        listOf(
+            "Check for updates is now the first thing in Settings, and TV power control (the IP and key) is at the very bottom.",
+        ),
+    ),
     PatchNote(
         7,
         "2026-11-08",
