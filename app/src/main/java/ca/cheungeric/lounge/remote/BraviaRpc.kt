@@ -18,6 +18,7 @@ object BraviaRpc {
 
     const val SERVICE_SYSTEM = "system"
     const val SERVICE_AV_CONTENT = "avContent"
+    const val SERVICE_AUDIO = "audio"
 
     /** Sony's "authentication failed / forbidden" JSON-RPC error code. */
     const val ERROR_AUTH = 40005
@@ -96,6 +97,33 @@ object BraviaRpc {
 
     /** `result[0].uri` of getPlayingContentInfo, or null (e.g. TV apps / tuner). */
     fun playingUriOf(result: JsonArray): String? = firstObject(result)?.str("uri")?.takeIf { it.isNotBlank() }
+
+    /** The TV's own speaker volume (audio service). */
+    fun getVolumeInformation(): String = request("getVolumeInformation", 31, null)
+
+    /** [delta] is sent as Sony's relative form ("+2" / "-2"). */
+    fun setAudioVolume(delta: Int): String = request(
+        "setAudioVolume", 32,
+        buildJsonObject {
+            put("target", "speaker")
+            put("volume", if (delta >= 0) "+$delta" else delta.toString())
+        },
+    )
+
+    fun setAudioMute(mute: Boolean): String = request("setAudioMute", 34, buildJsonObject { put("status", mute) })
+
+    /** The TV's speaker volume (level / max / muted). */
+    data class TvVolume(val level: Int, val max: Int, val muted: Boolean)
+
+    /** `result[0]` is an array of {target, volume, mute, maxVolume,…}; take the speaker (else the first). */
+    fun volumeOf(result: JsonArray): TvVolume? {
+        val items = (result.firstOrNull() as? JsonArray)?.mapNotNull { it as? JsonObject } ?: return null
+        val o = items.firstOrNull { it.str("target") == "speaker" } ?: items.firstOrNull() ?: return null
+        fun num(k: String): Int? = (o[k] as? JsonPrimitive)?.takeIf { !it.isString }?.longOrNull?.toInt()
+        val level = num("volume") ?: return null
+        val muted = (o["mute"] as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull ?: false
+        return TvVolume(level, num("maxVolume") ?: 100, muted)
+    }
 
     fun getSystemInformation(): String = request("getSystemInformation", 33, null)
 

@@ -147,6 +147,27 @@ class BraviaControl(context: Context) {
         return InputsResult.Ok(list, active)
     }
 
+    /** The TV's speaker volume, or null when not configured / unreachable. */
+    suspend fun volume(): BraviaRpc.TvVolume? {
+        if (!isConfigured) return null
+        val r = call(BraviaRpc.SERVICE_AUDIO, BraviaRpc.getVolumeInformation())
+        return (r as? Reply.Ok)?.let { BraviaRpc.volumeOf(it.result) }
+    }
+
+    /** Relative TV volume step. True if the TV accepted it. */
+    suspend fun adjustVolume(delta: Int): Boolean {
+        if (!isConfigured) return false
+        val r = call(BraviaRpc.SERVICE_AUDIO, BraviaRpc.setAudioVolume(delta))
+        return r is Reply.Ok
+    }
+
+    /** Flips the TV's mute (reads it first). True if the TV accepted it. */
+    suspend fun toggleMute(): Boolean {
+        val cur = volume() ?: return false
+        val r = call(BraviaRpc.SERVICE_AUDIO, BraviaRpc.setAudioMute(!cur.muted))
+        return r is Reply.Ok
+    }
+
     /** Switches to the HDMI input [uri] (must start with `extInput:hdmi`). */
     suspend fun setInputUri(uri: String): Result {
         if (!uri.startsWith(BraviaRpc.HDMI_PREFIX)) return Result.Error("bad input")

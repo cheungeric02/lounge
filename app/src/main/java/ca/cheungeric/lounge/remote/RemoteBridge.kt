@@ -439,7 +439,9 @@ class RemoteBridge(
         null
     }
 
-    private fun volumeJson(): String? {
+    private suspend fun volumeJson(): String? {
+        // The Bravia's speaker is what you hear, so prefer it; the box's own stream is only a fallback.
+        bravia.volume()?.let { return RemotePayloads.volume(it.level, it.max, it.muted) }
         val am = audio() ?: return null
         return try {
             RemotePayloads.volume(
@@ -454,6 +456,16 @@ class RemoteBridge(
     }
 
     private suspend fun adjustVolume(s: Session, action: RemoteCommand.VolumeAction) {
+        val viaTv = when (action) {
+            RemoteCommand.VolumeAction.Up -> bravia.adjustVolume(VOLUME_TV_STEP)
+            RemoteCommand.VolumeAction.Down -> bravia.adjustVolume(-VOLUME_TV_STEP)
+            RemoteCommand.VolumeAction.Mute -> bravia.toggleMute()
+        }
+        if (viaTv) {
+            delay(VOLUME_SETTLE_MS)
+            s.volumeKick.trySend(Unit)
+            return
+        }
         val am = audio() ?: return
         val dir = when (action) {
             RemoteCommand.VolumeAction.Up -> AudioManager.ADJUST_RAISE
@@ -817,6 +829,8 @@ class RemoteBridge(
         private const val MEDIA_RETRY_MS = 10_000L
         private const val VOLUME_POLL_MS = 5_000L
         private const val VOLUME_SETTLE_MS = 150L
+        /** Bravia speaker step per press (0-100 scale). */
+        private const val VOLUME_TV_STEP = 2
         private const val POWER_POLL_MS = 15_000L
         private const val POWER_SETTLE_MS = 1_000L
         private const val INPUT_DEBOUNCE_MS = 200L
