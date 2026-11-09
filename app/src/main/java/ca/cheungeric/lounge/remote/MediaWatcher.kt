@@ -138,6 +138,9 @@ class MediaWatcher(context: Context, private val labelOf: (String) -> String) {
     }
 
     private fun sample(c: MediaController): NowPlaying.Session? = try {
+        // A session that only remote-controls another device (e.g. Spotify Connect mirroring your phone)
+        // is not audio playing on this box, so it must not show up as "now playing" here.
+        if (c.playbackInfo?.playbackType == MediaController.PlaybackInfo.PLAYBACK_TYPE_REMOTE) return null
         val pkg = c.packageName
         val st = c.playbackState
         val md = c.metadata
