@@ -370,6 +370,15 @@ class RemoteBridge(
                     .collectLatest { r ->
                         mediaAccess = r.access
                         retrying("nowPlaying") { publishMedia(s, r) }
+                        // A paused session expires on its own: re-evaluate when its TTL runs out.
+                        val paused = r.sessions.filter { it.isPaused && it.lastPositionUpdateMs > 0 }.maxOfOrNull { it.lastPositionUpdateMs }
+                        if (r.access && paused != null && r.sessions.none { it.isPlaying }) {
+                            val wait = paused + NowPlaying.PAUSED_TTL_MS - SystemClock.elapsedRealtime() + 1_000
+                            if (wait > 0) {
+                                delay(wait)
+                                retrying("nowPlaying") { publishMedia(s, r) }
+                            }
+                        }
                     }
             } catch (e: CancellationException) {
                 throw e
@@ -383,7 +392,7 @@ class RemoteBridge(
     }
 
     private suspend fun publishMedia(s: Session, r: MediaWatcher.Report) {
-        val chosen = if (r.access) NowPlaying.choose(r.sessions) else null
+        val chosen = if (r.access) NowPlaying.choose(r.sessions, SystemClock.elapsedRealtime()) else null
         val bmp = chosen?.let { r.art[it.pkg] }
         val bytes = when {
             bmp == null -> null

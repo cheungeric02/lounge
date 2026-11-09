@@ -1,7 +1,7 @@
 package ca.cheungeric.lounge.ui.patchnotes
 
 /** Integer build number. Single source of truth: Gradle reads this line for versionCode/versionName. */
-const val APP_VERSION = 10
+const val APP_VERSION = 11
 
 data class PatchNote(
     val v: Int,
@@ -12,6 +12,14 @@ data class PatchNote(
 
 /** Newest first. Add an entry every release and bump [APP_VERSION]. */
 val PATCH_NOTES = listOf(
+    PatchNote(
+        11,
+        "2026-11-09",
+        "Old paused music clears",
+        listOf(
+            "A song left paused for more than 10 minutes (like Spotify after you listened elsewhere) no longer shows as Now Playing on the TV or phone.",
+        ),
+    ),
     PatchNote(
         10,
         "2026-11-09",

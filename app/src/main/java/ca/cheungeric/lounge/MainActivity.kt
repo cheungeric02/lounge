@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
                 }
                 while (true) {
                     watcher.reports().collect { r ->
-                        val chosen = if (r.access) NowPlaying.choose(r.sessions) else null
+                        val chosen = if (r.access) NowPlaying.choose(r.sessions, android.os.SystemClock.elapsedRealtime()) else null
                         val art = chosen?.let { r.art[it.pkg] }?.let { runCatching { it.asImageBitmap() }.getOrNull() }
                         nowPlaying = HomeNowPlaying.of(chosen, art)
                         // v6: remember what was played for Continue / Recently watched.

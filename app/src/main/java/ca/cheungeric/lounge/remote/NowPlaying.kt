@@ -42,9 +42,15 @@ object NowPlaying {
      * First playing session (in the system's order, most recently active first), else the paused
      * session with the most recent position update, else null (`state:"none"`).
      */
-    fun choose(sessions: List<Session>): Session? =
+    fun choose(sessions: List<Session>, elapsedNow: Long? = null): Session? =
         sessions.firstOrNull { it.isPlaying }
-            ?: sessions.filter { it.isPaused }.maxByOrNull { it.lastPositionUpdateMs }
+            ?: sessions.filter { it.isPaused && !isStalePaused(it, elapsedNow) }.maxByOrNull { it.lastPositionUpdateMs }
+
+    /** A session paused for longer than this is forgotten (e.g. Spotify left paused after you listened elsewhere). */
+    const val PAUSED_TTL_MS = 10 * 60_000L
+
+    fun isStalePaused(s: Session, elapsedNow: Long?): Boolean =
+        elapsedNow != null && s.lastPositionUpdateMs > 0 && elapsedNow - s.lastPositionUpdateMs > PAUSED_TTL_MS
 
     /**
      * Position at [elapsedNow]: while playing, `position + (elapsedNow - lastUpdate) * speed`;
