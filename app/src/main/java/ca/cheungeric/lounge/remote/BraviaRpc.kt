@@ -66,6 +66,7 @@ object BraviaRpc {
     fun getPlayingContentInfo(): String = request("getPlayingContentInfo", 103, null)
 
     const val HDMI_PREFIX = "extInput:hdmi"
+    const val CHROMECAST_PORT = 2
 
     /** One HDMI input from getCurrentExternalInputsStatus. */
     data class HdmiInput(
@@ -78,6 +79,10 @@ object BraviaRpc {
         /** The user's TV label, else Sony's title, else "HDMI N". */
         val displayName: String
             get() = label.trim().ifBlank { title.trim().ifBlank { "HDMI $port" } }
+
+        /** What Lounge shows: the Chromecast lives on HDMI 2, otherwise [displayName]. */
+        val shownName: String
+            get() = if (port == CHROMECAST_PORT) "Chromecast" else displayName
     }
 
     private val PORT = Regex("[?&]port=(\\d+)")

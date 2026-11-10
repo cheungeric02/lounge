@@ -168,7 +168,7 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                 val cur = _inputs.value
                 if (cur is InputsUiState.Ready) _inputs.value = cur.copy(activeUri = input.uri)
             } else {
-                onFailed(input.displayName)
+                onFailed(input.shownName)
                 if (r is BraviaControl.Result.WrongKey) _inputs.value = InputsUiState.WrongKey
             }
         }

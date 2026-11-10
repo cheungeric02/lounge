@@ -117,12 +117,12 @@ private fun InputTileView(input: HdmiInput, active: Boolean, onClick: () -> Unit
     val focused by interaction.collectIsFocusedAsState()
     val hdmi = stringResource(R.string.input_hdmi, input.port)
     val line2 = stringResource(if (input.connected) R.string.input_connected else R.string.input_disconnected, hdmi)
-    TileSurface(onClick, focused, interaction, Modifier.semantics { contentDescription = "${input.displayName}, $line2" }) {
+    TileSurface(onClick, focused, interaction, Modifier.semantics { contentDescription = "${input.shownName}, $line2" }) {
         // Disconnected inputs are dimmer but still selectable.
         Box(Modifier.fillMaxSize().alpha(if (input.connected) 1f else 0.55f).padding(16.dp)) {
             Column(Modifier.align(Alignment.BottomStart)) {
                 Text(
-                    input.displayName,
+                    input.shownName,
                     style = MaterialTheme.typography.titleLarge,
                     color = LoungeColors.OnSurface,
                     maxLines = 1,
