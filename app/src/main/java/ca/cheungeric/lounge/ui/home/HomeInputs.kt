@@ -1,11 +1,13 @@
 package ca.cheungeric.lounge.ui.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +27,12 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -38,6 +45,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import ca.cheungeric.lounge.R
 import ca.cheungeric.lounge.remote.BraviaControl
+import ca.cheungeric.lounge.remote.BraviaRpc
 import ca.cheungeric.lounge.remote.BraviaRpc.HdmiInput
 import ca.cheungeric.lounge.ui.theme.LoungeColors
 import ca.cheungeric.lounge.ui.theme.LoungeShapes
@@ -117,11 +125,22 @@ private fun InputTileView(input: HdmiInput, active: Boolean, onClick: () -> Unit
     val focused by interaction.collectIsFocusedAsState()
     val hdmi = stringResource(R.string.input_hdmi, input.port)
     val line2 = stringResource(if (input.connected) R.string.input_connected else R.string.input_disconnected, hdmi)
-    TileSurface(onClick, focused, interaction, Modifier.semantics { contentDescription = "${input.shownName}, $line2" }) {
+    val chromecast = input.port == BraviaRpc.CHROMECAST_PORT
+    TileSurface(
+        onClick, focused, interaction, Modifier.semantics { contentDescription = "${input.shownName}, $line2" },
+        containerColor = if (chromecast) Color.White else LoungeColors.SurfaceVariant,
+    ) {
         // Disconnected inputs are dimmer but still selectable.
-        Box(Modifier.fillMaxSize().alpha(if (input.connected) 1f else 0.55f).padding(16.dp)) {
+        val face = if (chromecast) Modifier.background(Brush.verticalGradient(listOf(Color.White, Color(0xFFEDEFF3)))) else Modifier
+        Box(Modifier.fillMaxSize().then(face)) {
+          if (chromecast) GoogleStripe(Modifier.align(Alignment.BottomCenter))
+          Box(Modifier.fillMaxSize().alpha(if (input.connected) 1f else 0.55f).padding(16.dp)) {
+            if (chromecast) {
+                // The Chromecast logo replaces its name and sits in the middle of the card.
+                ChromecastLogo(Modifier.align(Alignment.Center).padding(bottom = 14.dp))
+            }
             Column(Modifier.align(Alignment.BottomStart)) {
-                Text(
+                if (!chromecast) Text(
                     input.shownName,
                     style = MaterialTheme.typography.titleLarge,
                     color = LoungeColors.OnSurface,
@@ -131,7 +150,7 @@ private fun InputTileView(input: HdmiInput, active: Boolean, onClick: () -> Unit
                 Text(
                     line2,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = LoungeColors.OnSurfaceVariant,
+                    color = if (chromecast) Color(0xFF5F6368).copy(alpha = 0.9f) else LoungeColors.OnSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -150,6 +169,7 @@ private fun InputTileView(input: HdmiInput, active: Boolean, onClick: () -> Unit
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }
+          }
         }
     }
 }
@@ -188,6 +208,7 @@ internal fun TileSurface(
     width: Dp = InputTile.width,
     height: Dp = InputTile.height,
     cornerRadius: Dp = InputTile.cornerRadius,
+    containerColor: Color = LoungeColors.SurfaceVariant,
     onLongClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
@@ -199,9 +220,9 @@ internal fun TileSurface(
             .size(width, height),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(cornerRadius)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = LoungeColors.SurfaceVariant,
+            containerColor = containerColor,
             contentColor = LoungeColors.OnSurface,
-            focusedContainerColor = LoungeColors.SurfaceVariant,
+            focusedContainerColor = containerColor,
             focusedContentColor = LoungeColors.OnSurface,
             pressedContainerColor = LoungeColors.Outline,
             pressedContentColor = LoungeColors.OnSurface,
@@ -209,4 +230,34 @@ internal fun TileSurface(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 0.97f),
         interactionSource = interaction,
     ) { content() }
+}
+
+private val LogoRed = Color(0xFFDB4437)
+private val LogoYellow = Color(0xFFF4C20D)
+private val LogoGreen = Color(0xFF0F9D58)
+private val LogoBlue = Color(0xFF4285F4)
+
+/** Thin four-colour Google stripe along the bottom edge of the Chromecast card. */
+@Composable
+private fun GoogleStripe(modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().height(4.dp)) {
+        listOf(LogoBlue, LogoRed, LogoYellow, LogoGreen).forEach { Box(Modifier.weight(1f).fillMaxSize().background(it)) }
+    }
+}
+
+/** The Chromecast logo: the multicoloured ball plus a light-grey "chromecast" wordmark. */
+@Composable
+private fun ChromecastLogo(modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Canvas(Modifier.size(40.dp)) {
+            val d = size.minDimension
+            val box = Size(d, d)
+            drawArc(LogoRed, 210f, 120f, true, Offset.Zero, box)
+            drawArc(LogoYellow, 330f, 120f, true, Offset.Zero, box)
+            drawArc(LogoGreen, 90f, 120f, true, Offset.Zero, box)
+            drawCircle(Color.White, d * 0.30f, center)
+            drawCircle(LogoBlue, d * 0.23f, center)
+        }
+        Text("chromecast", fontSize = 24.sp, fontWeight = FontWeight.Light, color = Color(0xFF6E7378), maxLines = 1)
+    }
 }

@@ -1,7 +1,7 @@
 package ca.cheungeric.lounge.ui.patchnotes
 
 /** Integer build number. Single source of truth: Gradle reads this line for versionCode/versionName. */
-const val APP_VERSION = 12
+const val APP_VERSION = 13
 
 data class PatchNote(
     val v: Int,
@@ -12,6 +12,14 @@ data class PatchNote(
 
 /** Newest first. Add an entry every release and bump [APP_VERSION]. */
 val PATCH_NOTES = listOf(
+    PatchNote(
+        13,
+        "2026-11-13",
+        "Chromecast card",
+        listOf(
+            "The HDMI 2 card now shows the Chromecast logo on a white card.",
+        ),
+    ),
     PatchNote(
         12,
         "2026-11-09",
